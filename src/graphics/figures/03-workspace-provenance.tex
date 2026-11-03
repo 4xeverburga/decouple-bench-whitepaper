@@ -1,0 +1,72 @@
+% Figure 3 — where the workspace comes from, and what is kept of it.
+%
+% The agent is not handed a clone: it is handed an extracted archive
+% committed once, so the tree carries no history to read the answer out
+% of. What comes back out is that tree plus one diff.
+%
+% Two rows, joined at the end of the first: preparing the tree is one
+% chain, capturing the work is another, and they meet where the agent
+% does.
+%
+% Sources: src/bench/solves.py materialise / capture /
+% _refuse_stack_files. The two probes that made this necessary: a clone
+% carrying 3,671 commits, and a worktree that shared every ref.
+\documentclass[tikz,border=3pt]{standalone}
+\input{style}
+
+\begin{document}
+\begin{tikzpicture}
+
+% --------------------------------------------------------------- row one --
+\node[commit, text width=2.4cm] (pin) at (1.9,10)
+  {the pin\\ \texttt{089d2531}};
+\node[device, text width=2.6cm] (arch) at (5.2,10)
+  {\texttt{git archive}\\\texttt{<pin>}};
+\node[device, text width=3.0cm] (extract) at (8.8,10)
+  {extract to\\ \texttt{out/workspaces/}\\\texttt{\textit{run}/}};
+\node[warn, text width=2.6cm] (refuse) at (12.2,10)
+  {\textbf{refuse}\\ stack files};
+\node[device, text width=3.0cm] (baseline) at (15.8,10)
+  {\texttt{git init}\\ \texttt{add -A}\\\texttt{commit "baseline"}};
+
+\draw[flow] (pin) -- (arch);
+\draw[flow] (arch) -- (extract);
+\draw[flow] (extract) -- (refuse);
+\draw[flow] (refuse) -- (baseline);
+
+\node[note, text width=2.6cm, align=center] at (5.2,8.6)
+  {no clone:\\no history, no refs};
+\node[note, text width=3.4cm, align=center] at (15.8,8.5)
+  {one commit · no remote\\ no refs · no reflog};
+
+% --------------------------------------------------------------- row two --
+\node[device, text width=3.0cm] (agent) at (6.2,5.4)
+  {\textbf{the agent}\\ edits in place};
+\node[device, text width=3.2cm] (diff) at (10.4,5.4)
+  {\texttt{git add -N .}\\\texttt{git diff -{}-binary}};
+\node[file, text width=3.4cm] (out) at (14.6,5.4)
+  {\textbf{out/solves/\textit{run}/}\\ \texttt{record.json}\\
+   \texttt{diff.patch} \quad \texttt{tree/}};
+
+\draw[flow] (agent) -- (diff);
+\draw[flow] (diff) -- (out);
+
+\node[note, text width=3.2cm, align=center] at (10.4,4.0)
+  {intent-to-add is what\\ puts new files in the patch};
+\node[note, text width=3.4cm, align=center] at (14.6,3.9)
+  {the tree is copied aside\\ as it was left};
+
+% --------------------------------------------------------------- the join --
+\draw[flow, draw=teal, line width=1pt] (baseline.south) |-
+  node[lbl, above, pos=0.25] {the tree} (agent.north);
+
+% ---------------------------------------------------------------- caveat --
+\node[warn, anchor=north west, text width=12.6cm] at (1.0,2.4)
+  {\textbf{What the patch cannot show.} The diff is read through git, so a
+   write to a gitignored path is invisible: \texttt{diff\_bytes: 0} means
+   \emph{not measured}, never \emph{changed nothing}. A run that only
+   touched a build output and a run that did nothing produce the same
+   patch, and must be told apart by the trace.};
+
+\end{tikzpicture}
+\end{document}

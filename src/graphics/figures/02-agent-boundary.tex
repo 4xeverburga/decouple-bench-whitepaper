@@ -1,0 +1,80 @@
+% Figure 2 — what the sandbox is a boundary against.
+%
+% The agent gets a shell inside a container whose only host-visible thing
+% is the tree. Everything an answer could be read from, and everything a
+% run could reach for, is simply not a path in that container.
+%
+% Stacked, not side by side: the two things being compared are "what is
+% inside" and "what is outside", and one crossed link between them says
+% more than an arrow into a second column would.
+%
+% Sources: AGENTS.md hard rules 1, 2, 3 and 7; env/solve.yaml's own
+% comment ("the agent never has the docker socket and never sees the
+% supervisor's home"); src/bench/solves.py STACK_FILE.
+\documentclass[tikz,border=3pt]{standalone}
+\input{style}
+
+\begin{document}
+\begin{tikzpicture}
+
+% --------------------------------------------------------------- sandbox --
+\node[note, anchor=south west] at (0.6,8.35) {it has};
+\node[note, anchor=south west] at (6.0,8.35) {it has not};
+
+\node[box, text width=4.2cm] (ws) at (2.5,7.4)
+  {\textbf{the tree}\\at \texttt{/workspace}: the one\\writable host bind};
+\node[db] (db) at (2.5,6.1) {db};
+\node[note, text width=3.4cm, align=center] at (2.5,5.35)
+  {the app's database,\\ a sidecar on a private network};
+
+\node[device, text width=3.9cm] (sock) at (8.2,7.4) {the docker socket};
+\node[device, text width=3.9cm] (repo) at (8.2,6.4) {this repository};
+\node[device, text width=3.9cm] (home) at (8.2,5.4)
+  {the supervisor's home};
+
+\foreach \n in {sock, repo, home} {
+  \draw[stop, line width=0.8pt] (\n.south west) -- (\n.north east);
+  \draw[stop, line width=0.8pt] (\n.north west) -- (\n.south east);
+}
+
+\coordinate (nw) at (0.25,8.7);
+\coordinate (se) at (10.45,4.95);
+\begin{scope}[on background layer]
+  \node[sandbox, fit=(ws) (db) (home) (nw) (se)] (sandbox) {};
+\end{scope}
+\node[title, anchor=south] at (5.35,8.95)
+  {the solve sandbox — one compose project from \texttt{env/solve.yaml}};
+
+% ---------------------------------------------------------------- prompt --
+\node[file, text width=4.2cm] (order) at (-4.3,7.4)
+  {\textbf{the work order}\\a task type's contract\\ + the manifest's ask};
+\draw[flow, draw=teal, line width=1pt] (order.east) --
+  node[lbl, above, text width=1.9cm] {the prompt,\\ and it is all}
+  (ws.west);
+
+% ----------------------------------------------------------------- bench --
+\node[box, text width=9.6cm] (bench) at (5.35,2.75)
+  {\textbf{what the agent must not reach}\\
+   \texttt{seeds/} — the manifests and what each one grades\\
+   \texttt{src/samples/\textit{slug}/cases/*/expect.json} — the goldens\\
+   \texttt{out/solves/} — every other run's tree};
+
+\draw[flow, draw=stop, line width=1pt] (5.35,3.6) -- (5.35,4.95);
+\draw[stop, line width=1.2pt] (4.75,4.12) -- (5.45,4.62);
+\draw[stop, line width=1.2pt] (4.75,4.62) -- (5.45,4.12);
+\node[lbl, text=stop, anchor=west] at (5.6,4.37) {no mount, no path};
+
+% ---------------------------------------------------------------- caveat --
+\node[warn, anchor=north west, text width=10.2cm] at (0.25,1.55)
+  {\textbf{A pin that carries a stack file is refused, not scrubbed.}
+   Containerfile / Dockerfile, \texttt{compose*.yaml},
+   \texttt{entrypoint.sh}, \texttt{bootstrap.sh} and \texttt{.env} are the
+   bench's; a sample that still holds one was pinned wrong, and the solve
+   stops before an agent sees it.};
+
+\node[note, anchor=north west, text width=3.9cm] at (-6.2,6.6)
+  {The prompt names no route, no case and no golden, and no word for where
+   it runs: a work order, not an exam.};
+
+\end{tikzpicture}
+\end{document}

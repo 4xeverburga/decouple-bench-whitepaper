@@ -1,0 +1,66 @@
+% The figure atlas: every figure, in order, with the claim it makes.
+%
+% This is not the whitepaper. It exists so a change to `style.tex` can be
+% reviewed in one place instead of four PDFs, and so a reader who will
+% never build LaTeX can still see what the figures say.
+%
+% Build it after the figures: `make`, from the repository root.
+\documentclass[10pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[a4paper,margin=2cm,landscape]{geometry}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+
+\graphicspath{{../../build/}}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+
+\newcommand{\figurepage}[2]{%
+  \clearpage
+  \section*{#1}
+  \vspace{-4pt}%
+  #2\par
+  \vspace{4pt}%
+}
+
+% Wide figures, one page each: scaled to the line, but never taller than
+% the page, or LaTeX breaks the page in the middle of the picture.
+\newcommand{\figimg}[1]{%
+  \includegraphics[width=\linewidth,height=0.78\textheight,keepaspectratio]{#1}%
+}
+
+\begin{document}
+
+\begin{center}
+  {\Large\bfseries Workspace isolation}\\[2pt]
+  {\large figures for the whitepaper}\\[6pt]
+  {\small decouple-bench — draft, figures only}
+\end{center}
+
+\vspace{8pt}
+These four figures answer one question: what does one run actually touch,
+and what is kept apart from what. They describe the harness as it is, not
+as it was meant to be — each file names the sources it was drawn from.
+
+\figurepage{1. Two phases}{%
+  \figimg{01-two-phases}%
+}
+
+\figurepage{2. The agent's boundary}{%
+  \figimg{02-agent-boundary}%
+}
+
+\figurepage{3. Workspace provenance}{%
+  \figimg{03-workspace-provenance}%
+}
+
+\figurepage{4. One case, one stack}{%
+  \figimg{04-case-isolation}%
+}
+
+\end{document}

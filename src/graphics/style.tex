@@ -1,0 +1,82 @@
+% The whitepaper's shared figure style.
+%
+% A figure is one file under `figures/`: it compiles on its own
+% (standalone, so it drops into any document) and is included by
+% `atlas.tex`, which exists only to review them side by side.
+%
+% Everything visual lives here. A figure that invents its own colour,
+% arrow or border is a bug: the point of a style file is that figure 4
+% looks like it was drawn by whoever drew figure 1.
+%
+% Two media are in play, print and screen, and the paper may be read in
+% grayscale, so no meaning is carried by colour alone: every fill is
+% paired with a shape, a border style or a word.
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{
+  arrows.meta,
+  backgrounds,
+  calc,
+  fit,
+  positioning,
+  shapes.geometric,
+}
+
+% --- palette -------------------------------------------------------------
+\definecolor{ink}{HTML}{1F2933}      % body text, commit markers
+\definecolor{slate}{HTML}{52606D}    % secondary text, plain arrows
+\definecolor{hair}{HTML}{9AA5B1}     % borders
+\definecolor{paper}{HTML}{F7F8FA}    % panel fill behind labels
+\definecolor{teal}{HTML}{0B7285}     % the bench's own things: sandbox,
+                                     % stack, stored artefacts
+\definecolor{amber}{HTML}{96590B}    % a caveat, a thing that cannot be
+                                     % relied on
+\definecolor{plum}{HTML}{6B2E4F}     % the answer key, and what is barred
+\definecolor{stop}{HTML}{A6242B}     % a crossed-out path
+
+% --- shapes --------------------------------------------------------------
+\tikzset{
+  % text
+  every node/.style={font=\sffamily\small, text=ink},
+  title/.style={font=\sffamily\bfseries\small, text=ink, align=center},
+  note/.style={font=\sffamily\footnotesize, text=slate, align=left,
+    inner sep=1pt},
+  lbl/.style={font=\sffamily\footnotesize, text=slate, fill=paper,
+    inner sep=1.5pt, align=center},
+  % containers. A solid border is something we own; a dashed one is a
+  % boundary that was imposed.
+  panel/.style={draw=hair, fill=paper, rounded corners=4pt, inner sep=7pt,
+    line width=0.7pt},
+  sandbox/.style={draw=teal, fill=teal!4, rounded corners=4pt, dashed,
+    inner sep=7pt, line width=0.9pt},
+  outside/.style={draw=slate, fill=slate!3, rounded corners=4pt,
+    inner sep=7pt, line width=0.7pt},
+  % leaves
+  box/.style={draw=hair, fill=white, rounded corners=2pt, align=left,
+    inner sep=4pt, line width=0.6pt},
+  device/.style={draw=hair, fill=white, rounded corners=2pt,
+    align=center, inner sep=4pt, line width=0.6pt},
+  file/.style={draw=hair, fill=white, rounded corners=1pt, align=left,
+    inner sep=4pt, line width=0.6pt},
+  warn/.style={draw=amber, fill=amber!5, rounded corners=2pt, align=left,
+    inner sep=4pt, line width=0.7pt},
+  key/.style={draw=plum, fill=plum!6, rounded corners=2pt, align=left,
+    inner sep=4pt, line width=0.7pt},
+  db/.style={cylinder, shape border rotate=90, aspect=0.28, draw=hair,
+    fill=white, align=center, minimum height=9mm, minimum width=13mm,
+    inner sep=2pt, font=\sffamily\footnotesize},
+  commit/.style={draw=ink!60, fill=ink!6, align=center, inner sep=3pt,
+    trapezium, trapezium left angle=72, trapezium right angle=108,
+    font=\sffamily\footnotesize},
+  % edges. `flow` is data or control moving; `back` is a dashed one, used
+  % where the two ends are not one hand-off but a shared state.
+  flow/.style={-{Latex[length=1.8mm,width=1.4mm]}, draw=slate,
+    line width=0.7pt},
+  back/.style={flow, dashed},
+  link/.style={draw=slate, dashed, line width=0.6pt},
+}

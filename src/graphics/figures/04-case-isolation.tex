@@ -1,0 +1,95 @@
+% Figure 4 — one case, one stack, and a database that starts empty.
+%
+% The goldens were captured on a pristine database, so a case scored on a
+% database another case touched is not the same measurement. Scoring
+% therefore gives every case its own compose project, and removes it
+% afterwards, volumes included.
+%
+% Sources: AGENTS.md rule 4; src/bench/stack.py (project name, up
+% --build, readiness, down -v); specs/behavior.md §2.
+\documentclass[tikz,border=3pt]{standalone}
+\input{style}
+
+\begin{document}
+\begin{tikzpicture}
+
+% -------------------------------------------------------------- manifest --
+\node[file, text width=6.4cm, align=center] (man) at (7.6,10.6)
+  {\textbf{one manifest}\\ one sample, the cases it is graded on, and the
+   scorers assigned to it};
+
+% ---------------------------------------------------------------- case 1 --
+\node[note] (capline1) at (3.4,7.15)
+  {\texttt{docker compose -p bench-mamute-1a2b3c4d}};
+\node[db] (db1) at (1.6,6.3) {db};
+\node[device, minimum width=1.5cm] (fr1) at (3.4,6.3) {front};
+\node[device] (co1) at (5.4,6.3) {collector};
+\draw[link] (db1) -- (fr1);
+\draw[link] (fr1) -- (co1);
+
+\node[device, text width=4.6cm] (flow1) at (3.4,5.3)
+  {\texttt{flow.py} — Playwright,\\ on the host};
+\node[file, text width=4.6cm] (cmp1) at (3.4,4.15)
+  {before / after $\to$ delta\\ against \texttt{expect.json}};
+\draw[flow] (fr1.south) -- (flow1.north);
+\draw[flow] (flow1) -- (cmp1);
+
+\coordinate (nw1) at (0.8,8.0);
+\coordinate (se1) at (6.0,3.7);
+\begin{scope}[on background layer]
+  \node[panel, fit=(capline1) (db1) (co1) (cmp1) (nw1) (se1)] (case1) {};
+\end{scope}
+\node[title, anchor=north] at (3.4,7.85) {case 1 — \texttt{answer-appears}};
+
+% ---------------------------------------------------------------- case 2 --
+\node[note] (capline2) at (11.9,7.15)
+  {\texttt{docker compose -p bench-mamute-9f3c0a71}};
+\node[db] (db2) at (10.1,6.3) {db};
+\node[device, minimum width=1.5cm] (fr2) at (11.9,6.3) {front};
+\node[device] (co2) at (13.9,6.3) {collector};
+\draw[link] (db2) -- (fr2);
+\draw[link] (fr2) -- (co2);
+
+\node[device, text width=4.6cm] (flow2) at (11.9,5.3)
+  {\texttt{flow.py}};
+\node[file, text width=4.6cm] (cmp2) at (11.9,4.15)
+  {before / after $\to$ delta\\ against \texttt{expect.json}};
+\draw[flow] (fr2.south) -- (flow2.north);
+\draw[flow] (flow2) -- (cmp2);
+
+\coordinate (nw2) at (9.3,8.0);
+\coordinate (se2) at (14.5,3.7);
+\begin{scope}[on background layer]
+  \node[panel, fit=(capline2) (db2) (co2) (cmp2) (nw2) (se2)] (case2) {};
+\end{scope}
+\node[title, anchor=north] at (11.9,7.85) {case 2 — \texttt{vote-counts}};
+\node[note] at (15.4,6.6) {$\cdots$};
+
+% ------------------------------------------------------------ one at a time --
+\coordinate (trunk) at (7.6,9.7);
+\draw[flow, draw=teal, line width=1pt] (man.south) -- (trunk);
+\draw[flow, draw=teal, line width=1pt] (trunk) -| (case1.north);
+\draw[flow, draw=teal, line width=1pt] (trunk) -| (case2.north);
+\node[lbl, anchor=north west, text width=2.6cm] at (7.8,9.6)
+  {one case at a time,\\ each from empty};
+
+% ---------------------------------------------------------------- teardown --
+\node[warn, text width=5.0cm] (down1) at (3.4,2.05)
+  {\texttt{docker compose down -v}\\ the volumes go with it: the next case
+   must not inherit this one's rows};
+\node[warn, text width=5.0cm] (down2) at (11.9,2.05)
+  {\texttt{docker compose down -v}};
+\draw[flow, draw=stop] (cmp1.south) -- (down1.north);
+\draw[flow, draw=stop] (cmp2.south) -- (down2.north);
+
+% ------------------------------------------------------------------ notes --
+\node[note, anchor=north west, text width=15.0cm] at (0.4,1.1)
+  {Cases run one at a time (\texttt{-{}-max-samples 1}): they share the
+   published port, so two stacks at once are two collisions, not two
+   measurements. The collector's spans are copied out to
+   \texttt{out/traces/\textit{slug}/} before the project is removed —
+   \texttt{down -v} deletes the volume they were written to, and a missing
+   trace never turns a verdict into an error.};
+
+\end{tikzpicture}
+\end{document}

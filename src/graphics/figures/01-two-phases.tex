@@ -1,0 +1,78 @@
+% Figure 1 — one run is two phases, and they do not share a container.
+%
+% Left: the solve, which Inspect runs in a sandbox because the agent needs
+% a shell. Right: the score, which runs on the host because the scorer
+% starts the app's own stack. The only thing that crosses is the tree.
+%
+% Sources: AGENTS.md ("the bench owns the stack", "one sample, one stack"),
+% src/bench/solves.py, src/bench/stack.py, specs/behavior.md §1-2.
+\documentclass[tikz,border=3pt]{standalone}
+\input{style}
+
+\begin{document}
+\begin{tikzpicture}[node distance=5mm and 6mm]
+
+% ---------------------------------------------------------------- solve --
+\node[file, text width=4.6cm] (wo)
+  {\textbf{work order}\\the task type's contract\\ + the manifest's ask};
+\node[device, text width=4.6cm, below=of wo] (agent)
+  {\textbf{agent}\\one profile of \texttt{runs.yaml}};
+\node[device, text width=4.6cm, below=of agent] (ws)
+  {\textbf{workspace}\\the pinned tree at \texttt{/workspace},\\writable,
+   caches warm};
+\node[db, right=8mm of ws] (db) {db};
+\node[note, below=2mm of db, text width=1.8cm, align=center] (dbnote)
+  {MySQL 5.7,\\the app's own};
+\node[file, text width=4.6cm, below=15mm of ws] (kept)
+  {\textbf{out/solves/\textit{run}/}\\\texttt{record.json}\\
+   \texttt{diff.patch} \quad \texttt{tree/}};
+
+\draw[flow] (wo) -- node[lbl, right] {prompt} (agent);
+\draw[flow] (agent) -- node[lbl, right] {edits} (ws);
+\draw[link] (ws) -- (db);
+\draw[flow] (ws) -- node[lbl, right] {cleanup hook} (kept);
+
+\begin{scope}[on background layer]
+  \node[sandbox, fit=(wo) (agent) (ws) (db) (dbnote) (kept), inner sep=4mm]
+    (sandbox) {};
+\end{scope}
+\node[title, anchor=south, text width=7.6cm] at (sandbox.north)
+  {1 \, solve — a sandbox, an agent, a tree};
+
+% ---------------------------------------------------------------- score --
+\node[device, text width=4.6cm, right=22mm of sandbox.east |- wo]
+  (pw) {\textbf{Playwright}\\on the host};
+\node[device, text width=4.6cm, below=of pw] (port)
+  {the app's published port\\\texttt{APP\_HTTP\_PORT}};
+\node[db, below=8mm of port] (db2) {db};
+\node[note, below=3mm of db2, text width=3.6cm, align=center]
+  {a fresh volume: empty\\at the start of every case};
+\node[file, text width=4.6cm, below=19mm of db2] (delta)
+  {\textbf{before} / \textbf{after} snapshots\\$\to$ delta against
+   \texttt{expect.json}};
+
+\draw[flow] (pw) -- (port);
+\draw[flow] (port) -- (db2);
+\draw[flow] (db2) -- (delta);
+
+\begin{scope}[on background layer]
+  \node[panel, fit=(pw) (port) (db2) (delta)] (scoring) {};
+\end{scope}
+\node[title, anchor=south, text width=7.4cm] at (scoring.north)
+  {2 \, score — on the host, one stack per case};
+
+% ---------------------------------------------------------- the handoff --
+\draw[flow, line width=1pt, draw=teal]
+  (kept.east) -- node[lbl, above, align=center]
+  {\texttt{BENCH\_CHECKOUT}\\= the tree} (scoring.west |- kept);
+
+\node[note, anchor=north west, text width=11.4cm]
+  at ($(sandbox.south west) + (0,-7mm)$)
+  {The driver carries exactly two things between the two phases: a run id,
+   which names \texttt{out/solves/\textit{run}/}, and the tree that id
+   names. A stale \texttt{BENCH\_CHECKOUT} is the one failure it cannot
+   catch, which is why scoring derives it from the id rather than
+   accepting it as input.};
+
+\end{tikzpicture}
+\end{document}
