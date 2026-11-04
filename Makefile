@@ -1,12 +1,12 @@
 # Figures are built out of tree: every PDF lands in `build/`, and nothing
 # under `src/` is ever written to. A build must leave `git status` empty.
 
-LATEX     ?= pdflatex
+LATEX     ?= xelatex
 LATEXOPTS ?= -interaction=nonstopmode -halt-on-error -file-line-error
 
 SRC     := src/graphics
 BUILD   := build
-FIGURES := 01-two-phases 02-agent-boundary 03-workspace-provenance 04-case-isolation
+FIGURES := 01-two-phases 02-agent-boundary 03-workspace-provenance 04-case-isolation 05-escape-paths 06-context-leaks
 
 .PHONY: all figures atlas png clean
 
@@ -28,7 +28,8 @@ figures: | $(BUILD)
 atlas: figures
 	@cd $(SRC) && for i in 1 2; do \
 	  $(LATEX) $(LATEXOPTS) -output-directory=../../$(BUILD) \
-	    atlas.tex >/dev/null || exit 1; \
+	    -jobname=atlas '\def\builddir{$(abspath $(BUILD))/}\input{atlas}' \
+	    >/dev/null || exit 1; \
 	done; echo "  atlas"
 
 # Previews, for reading the figures without a PDF reader.

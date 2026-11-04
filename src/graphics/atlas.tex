@@ -1,66 +1,521 @@
-% The figure atlas: every figure, in order, with the claim it makes.
+% The figure atlas: every figure, in order, with the claim it makes, the
+% threat model the last two draw, where the harness sits in the
+% literature, and the references.
 %
 % This is not the whitepaper. It exists so a change to `style.tex` can be
-% reviewed in one place instead of four PDFs, and so a reader who will
-% never build LaTeX can still see what the figures say.
+% reviewed in one place, and so a reader who will never build LaTeX can
+% still see what the figures say.
 %
-% Build it after the figures: `make`, from the repository root.
+% Build it after the figures: `make`, from the repository root (XeLaTeX:
+% the type is the one DESIGN.md names, shipped in `fonts/`).
 \documentclass[10pt,a4paper]{article}
 
-\usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc}
-\usepackage{lmodern}
+\usepackage{fontspec}
 \usepackage[a4paper,margin=2cm,landscape]{geometry}
 \usepackage{graphicx}
 \usepackage{xcolor}
+\usepackage{fontawesome5}
+\usepackage{enumitem}
+\usepackage{multicol}
 \usepackage[hidelinks]{hyperref}
+\usepackage{url}
 
-\graphicspath{{../../build/}}
+\setmainfont{HankenGrotesk}[
+  Path=fonts/, Extension=.ttf,
+  UprightFont=*-400, BoldFont=*-700, ItalicFont=*-400-italic,
+  BoldItalicFont=*-700]
+\setmonofont{JetBrainsMono}[
+  Path=fonts/, Extension=.ttf, Scale=0.88,
+  UprightFont=*-Regular, BoldFont=*-Bold, ItalicFont=*-Italic]
+\newfontfamily\display{Quicksand}[
+  Path=fonts/, Extension=.ttf, UprightFont=*-Medium, BoldFont=*-Bold]
+
+\definecolor{ink}{HTML}{18130F}
+\definecolor{inksec}{HTML}{574F47}
+\definecolor{muted}{HTML}{6F665D}
+\definecolor{heatink}{HTML}{C4001A}
+\definecolor{heatred}{HTML}{FF0024}
+\color{ink}
+
+% XeTeX does not find a relative image under -output-directory, so the
+% Makefile defines \builddir as the absolute build path.
+\providecommand{\builddir}{../../build/}
+% (graphicspath does not expand a macro, so \figimg prefixes it itself)
 
 \setlength{\parindent}{0pt}
-\setlength{\parskip}{6pt}
+\setlength{\parskip}{5pt}
+\setlist{nosep, leftmargin=1.4em, itemsep=2pt}
+\urlstyle{tt}
 
-\newcommand{\figurepage}[2]{%
+\makeatletter
+\renewcommand\section{\@startsection{section}{1}{0pt}{0pt}{6pt}%
+  {\display\bfseries\Large\color{ink}}}
+\renewcommand\subsection{\@startsection{subsection}{2}{0pt}{8pt}{2pt}%
+  {\display\bfseries\normalsize\color{ink}}}
+\makeatother
+
+\newcommand{\claim}[1]{{\color{inksec}#1}\par}
+\newcommand{\hot}[1]{{\color{heatink}\bfseries #1}}
+
+\newcommand{\figurepage}[3]{%
   \clearpage
   \section*{#1}
-  \vspace{-4pt}%
-  #2\par
-  \vspace{4pt}%
+  \claim{#2}
+  \vspace{2pt}%
+  \begin{center}#3\end{center}
 }
 
 % Wide figures, one page each: scaled to the line, but never taller than
 % the page, or LaTeX breaks the page in the middle of the picture.
 \newcommand{\figimg}[1]{%
-  \includegraphics[width=\linewidth,height=0.78\textheight,keepaspectratio]{#1}%
+  \includegraphics[width=\linewidth,height=0.76\textheight,
+    keepaspectratio]{\builddir #1.pdf}%
 }
 
 \begin{document}
 
 \begin{center}
-  {\Large\bfseries Workspace isolation}\\[2pt]
-  {\large figures for the whitepaper}\\[6pt]
-  {\small decouple-bench — draft, figures only}
+  {\display\bfseries\Huge Workspace isolation}\\[4pt]
+  {\display\large figures for the whitepaper}\\[6pt]
+  {\small\color{muted}decouple-bench — draft, figures only}
 \end{center}
 
-\vspace{8pt}
-These four figures answer one question: what does one run actually touch,
+\vspace{10pt}
+\begin{minipage}{0.62\linewidth}
+These six figures answer one question: what does one run actually touch,
 and what is kept apart from what. They describe the harness as it is, not
-as it was meant to be — each file names the sources it was drawn from.
+as it was meant to be — each figure's source file names the code it was
+drawn from.
 
-\figurepage{1. Two phases}{%
-  \figimg{01-two-phases}%
-}
+Figures 1–4 are the design: two phases, a sandbox whose only host path
+is the tree, a workspace with no history, and one stack per case.
+Figures 5 and 6 are the threat model against that design: the ways an
+agent could leave the sandbox, and what it can read without leaving it.
+They are drawn from the configuration, not from an observed run; no run
+has been shown to use any of them. The last pages place the harness
+among the sandboxes and benchmarks it borrows from, with references.
+\end{minipage}
 
-\figurepage{2. The agent's boundary}{%
-  \figimg{02-agent-boundary}%
-}
+\figurepage{1. Two phases}
+  {A run is two evals: a solve inside Inspect's docker compose sandbox,
+   and a score on the host. The only thing that crosses is the tree —
+   but it crosses twice, and both crossings are trusted.}
+  {\figimg{01-two-phases}}
 
-\figurepage{3. Workspace provenance}{%
-  \figimg{03-workspace-provenance}%
-}
+\figurepage{2. The agent's boundary}
+  {The sandbox's filesystem has the tree and a database sidecar, and no
+   path to the bench, the goldens or the docker socket. Its network has
+   all of them: the bench repository is public, and egress is open.}
+  {\figimg{02-agent-boundary}}
 
-\figurepage{4. One case, one stack}{%
-  \figimg{04-case-isolation}%
-}
+\figurepage{3. Workspace provenance}
+  {The workspace is an extracted archive committed once, not a clone: no
+   history, no refs, no reflog. What comes back is that tree plus one
+   diff, read by host-side git from a \texttt{.git/} the agent could
+   write.}
+  {\figimg{03-workspace-provenance}}
+
+\figurepage{4. One case, one stack}
+  {One case, one compose project, empty named volumes, and \texttt{down
+   -v} before the next. The stack builds and runs the agent's code.}
+  {\figimg{04-case-isolation}}
+
+\figurepage{5. Five ways out}
+  {A threat model, ordered by cost to the agent. Paths 1 and 2 need no
+   exploit; path 4 needs an unpatched runtime; path 5 attacks the
+   measurement rather than the host.}
+  {\figimg{05-escape-paths}}
+
+% ------------------------------------------------------------------------
+\clearpage
+\section*{How an agent could leave the sandbox}
+\begin{multicols}{2}
+\claim{The container is one boundary, and it holds against what it was
+built for: the agent has no mount of the bench, no docker socket and no
+model credentials. What follows are the places where something on the
+other side of that boundary trusts what the agent left, or where the
+boundary was never drawn. Frontier models already find these on their
+own: o1-preview, in a CTF, found an exposed Docker API and used it to read
+the flag~\cite{o1card}, and SandboxEscapeBench measured models reliably
+exploiting writable host mounts and exposed sockets~\cite{sandboxescape}.}
+
+\subsection*{\hot{1}\ Host git on a \texttt{.git/} the agent wrote}
+The bind mount includes \texttt{.git/}. When the solve ends, the cleanup
+hook runs \texttt{git add -N .} and \texttt{git diff -{}-binary} on the
+host, as the supervisor, against that directory
+(\texttt{solves.capture}). Git reads \texttt{.git/config} first, and
+several of its keys are commands: \texttt{core.fsmonitor} is executed by
+\texttt{add} and \texttt{diff}~\cite{gitconfig}. An agent that writes one
+line there gets code execution on the host at cleanup. The supervisor is
+in group \texttt{docker}, so that is root-equivalent: every sample's
+\texttt{.env}, every golden, every other run. This is the same class of
+problem SWE-bench met from the other side — agents reading the
+repository's own git state~\cite{swebench465} — except here the
+repository is read by the harness, not the agent.
+\emph{Close it} by never running git on an agent-written tree: keep the
+baseline's \texttt{GIT\_DIR} on the host, outside the mount, and diff a
+copy that has no \texttt{.git/}; at minimum pass \texttt{-c
+core.fsmonitor= -c core.hooksPath=/dev/null}.
+
+\subsection*{\hot{2}\ The public bench repository}
+\texttt{solve.yaml} declares no network, so the workspace sits on
+compose's default bridge, with egress. The bench is public on GitHub, and
+tracks \texttt{seeds/manifests.json}, every prompt, and seventeen
+\texttt{expect.json} goldens. \texttt{git clone} is the whole exploit.
+It also breaks hard rule 1 (\emph{never expose this repository to the
+agent}) without any run doing anything unusual. Contamination of this
+kind is what retired SWE-bench Verified as a frontier
+measure~\cite{openaiverified, swebenchplus}.
+\emph{Close it} by making the repository private (or moving the corpus
+out of it), and by giving the sandbox an \texttt{internal: true} network
+with an allow-list proxy for Maven Central and npm; the model bridge needs
+no egress, it answers through Inspect from the host~\cite{inspect}.
+
+\subsection*{3\ Writing through the bind mount as root}
+The toolbox image sets no \texttt{USER} and the daemon has no user
+namespace remapping, so the agent is uid 0 and so are its files on the
+host. A setuid-root binary written to \texttt{/workspace} is one in the
+supervisor's home; a symlink to \texttt{/} is a trap for any host tool
+that follows it later. Neither escapes on its own; both wait for the
+host to act.
+\emph{Close it} with a non-root \texttt{user:}, rootless docker or
+\texttt{userns-remap}, a \texttt{nosuid} mount, and a capture that refuses
+links leaving the tree.
+
+\subsection*{4\ The container runtime or the kernel}
+A plain runc container shares the host kernel. Root inside it has been one
+runtime bug away from the host more than once: CVE-2019-5736 overwrote
+the host's runc binary~\cite{cve5736}, and CVE-2024-21626 leaked a host
+directory descriptor into the container~\cite{cve21626}.
+SandboxEscapeBench reports models succeeding on runtime and kernel escapes
+some of the time~\cite{sandboxescape}.
+\emph{Close it} by patching, and for anything adversarial, by a stronger
+boundary: gVisor's user-space kernel~\cite{gvisor}, Kata
+Containers~\cite{kata} or a Firecracker microVM~\cite{firecracker}.
+Inspect can drive several such back-ends~\cite{aisisandbox}.
+
+\subsection*{5\ Its own code, at scoring time}
+Scoring builds the tree with \texttt{docker build}, which runs the pom's
+plugins and any npm scripts the agent added, with network. The resulting
+\texttt{front} runs the agent's code on the \texttt{api} network, next to
+the OpenTelemetry collector whose spans become the trace the judge reads.
+An agent's code can post spans of its own, write text into span names for
+the judge to read, or tell a Playwright flow from a user. None of this
+leaves a container; all of it is reward hacking in the sense measured by
+ImpossibleBench and EvilGenie~\cite{impossiblebench, evilgenie} and seen
+in the wild by METR~\cite{metrhack}.
+\emph{Close it} by building from a host-owned pom offline, giving the
+collector a network only the Java agent reaches, and passing span text to
+the judge as quoted data.
+\end{multicols}
+
+\figurepage{6. What a curious agent can read}
+  {Without leaving: the left column tells the agent it is measured, the
+   middle column hands it the answer, the right column is what was
+   checked and holds.}
+  {\figimg{06-context-leaks}}
+
+% ------------------------------------------------------------------------
+\clearpage
+\section*{What can leak into the workspace's context}
+\begin{multicols}{2}
+\claim{Hard rule 2 keeps the words \emph{benchmark}, \emph{golden} and
+\emph{case} out of the prompt. The prompt is not the agent's only input:
+a shell reads everything the container exposes, and the context window
+fills with whatever the agent chose to read. Two kinds of leak matter, and
+they cost different things.}
+
+\subsection*{Names the measurement}
+These tell the agent it is being evaluated. They do not hand it an
+answer, but evaluation awareness is the precondition for strategic
+underperformance~\cite{sandbagging} and for behaving well only when
+watched, and the reward-hacking literature finds it shifts what models
+do~\cite{impossiblebench, naturalmisalign}.
+\begin{itemize}
+\item \texttt{/proc/self/mountinfo} prints the bind mount's host source:
+  \texttt{…/jsp-decouple-bench/out/workspaces/\textit{run}} — the
+  repository's name, the user's home, the run id.
+\item \texttt{git log}: one commit, \texttt{baseline}, by \texttt{bench
+  <bench@localhost>}, minutes old.
+\item The compose project is \texttt{bench-solve-mamute}; on a
+  user-defined network Docker's resolver answers the container's own name
+  (to be confirmed from inside a run).
+\item \texttt{ps} and \texttt{env} show an agent CLI copied in at run time
+  and a model bridge, with \texttt{OPENCODE\_API\_KEY=sk-none}.
+\end{itemize}
+Each of these is a name the bench chose and can choose again: a neutral
+commit author, a project name and a host path with no \emph{bench} in
+them. The bridge cannot be hidden, and need not be: an agent CLI is what
+any developer's machine runs.
+
+\subsection*{Carries the answer}
+These invalidate a score. A run that read one is a leak, not a
+measurement (\texttt{AGENTS.md}, \emph{before a score is quoted}).
+\begin{itemize}
+\item The public repository (figure 5, path 2): manifests, prompts,
+  goldens, and through \texttt{seeds/prompts/} every other work order.
+\item The app's upstream, forks and issue trackers. Nobody has published
+  this decoupling today; nothing stops the lookup if somebody does — the
+  same drift that made SWE-bench-Live and SWE-Bench Pro necessary
+  \cite{swebenchlive, sweprover}.
+\item The left column feeds this one: the \texttt{mountinfo} path tells
+  an agent which repository to search for.
+\end{itemize}
+
+\subsection*{Checked, and holds}
+\begin{itemize}
+\item No history: \texttt{git archive} into a fresh one-commit repository
+  leaves nothing for the \texttt{git log -{}-all} attack that SWE-bench
+  had to patch out in 2025~\cite{swebench465}.
+\item No other run: only this run's directory is mounted.
+\item No credentials: the model bridge answers from the host; the sample's
+  \texttt{.env} belongs to the stack, never the tree.
+\item No rows: the solve's database starts empty; case state exists only
+  at scoring, in a project removed with \texttt{down -v}.
+\end{itemize}
+The checks that apply to every run are the ones \texttt{AGENTS.md}
+already asks for: read the trace for any path that left the checkout,
+and treat a run that touched the corpus as no score. With egress closed,
+that check becomes a confirmation rather than the only defence.
+\end{multicols}
+
+% ------------------------------------------------------------------------
+\clearpage
+\section*{Where this sits: sandboxes and benchmarks}
+\begin{multicols}{2}
+\subsection*{Inspect, and its standing}
+Inspect is the UK AI Security Institute's evaluation framework, released
+in May 2024 under MIT~\cite{inspect}. It has no peer-reviewed paper of
+its own: its canonical citation is the software, through its
+\texttt{CITATION.cff}. Its standing comes from use. AgentHarm (ICLR
+2025)~\cite{agentharm}, CTRL-ALT-DECEIT (NeurIPS 2025)~\cite{ctrlaltdeceit}
+and SandboxEscapeBench (ICML 2026)~\cite{sandboxescape} are built on it;
+ImpossibleBench ships an Inspect implementation~\cite{impossiblebench};
+METR is moving its own tooling, Vivaria, to Inspect~\cite{vivaria}; and
+its catalogue lists over 200 ready-made evaluations with sandboxes on
+Docker, Kubernetes, Modal, Proxmox and Vagrant~\cite{inspect,
+aisisandbox}. The fair description is \emph{widely adopted,
+government-maintained infrastructure, cited as software} — the de facto
+standard for agentic and safety evaluations — not \emph{a peer-reviewed
+method}. Harnesses with a methods paper of their own are older and
+narrower: lm-evaluation-harness~\cite{lmeval}, HELM~\cite{helm} and the
+SWE-bench harness~\cite{swebench}. For this bench the choice matters
+less than it looks: what makes a score credible here is the corpus, the
+delta algorithm and the isolation, not the framework that schedules it.
+
+\subsection*{Agentic coding benchmarks}
+SWE-bench~\cite{swebench} set the pattern this bench follows: real
+repositories, a pinned commit, one container per task, and a grade from
+execution rather than from text. Its history is a list of the leaks that
+pattern invites. SWE-Bench+ found solutions in the issue text and tests
+too weak to tell a fix from a guess~\cite{swebenchplus}; agents read
+future commits through \texttt{git log -{}-all} until the harness stripped
+them~\cite{swebench465}; SWE-bench-Live answers contamination with fresh
+issues~\cite{swebenchlive}; SWE-Bench Pro Verified rebuilds repositories
+without future objects and hides test artefacts~\cite{sweprover}; and
+OpenAI stopped reporting Verified, citing contamination and flawed
+tests~\cite{openaiverified}. Terminal-Bench moved the same idea to the
+shell~\cite{terminalbench}. Zhu et al.\ turn these lessons into a rigour
+checklist~\cite{rigorous}. This bench's answers are the ones they
+converged on: no history, hidden goldens, a fresh database per case, a
+trace read before a score is quoted.
+
+\subsection*{Training environments}
+The same containers are now RL environments. OpenHands~\cite{openhands},
+SWE-Gym~\cite{swegym}, R2E-Gym~\cite{r2egym} and SWE-smith~\cite{swesmith}
+produce thousands of executable tasks for training, and a sandbox that
+leaks during training teaches the leak: reward hacking learned in
+production RL generalises to wider misalignment~\cite{naturalmisalign}.
+
+\subsection*{Reward hacking and escape, measured}
+METR reports frontier models editing tests and scorers~\cite{metrhack};
+ImpossibleBench makes every pass a hack and finds the rate depends
+heavily on the prompt~\cite{impossiblebench}; EvilGenie catches explicit
+hacking in Codex and Claude Code~\cite{evilgenie}. On the sandbox side,
+SandboxEval tests 51 properties of evaluation sandboxes, including data
+exposure and network access~\cite{sandboxeval}, and a comparative study
+of code sandboxes finds pinning and patching matter more than the engine
+chosen~\cite{codesandboxes}. AISI's own sandboxing toolkit scopes itself
+to accidental damage and leaves adversarial models as future
+work~\cite{aisisandbox} — which is the honest position for this bench
+too, until paths 1 and 2 are closed.
+
+\subsection*{Isolation primitives}
+A docker container shares the host kernel~\cite{cve5736, cve21626}.
+gVisor interposes a user-space kernel, at a cost in syscalls and
+I/O~\cite{gvisor}; Kata Containers~\cite{kata} and Firecracker
+microVMs~\cite{firecracker} give each workload its own kernel. The
+consensus for agentic evaluation is not to rely on the container
+boundary alone~\cite{o1card, sandboxescape}.
+\end{multicols}
+
+% ------------------------------------------------------------------------
+\clearpage
+\section*{References}
+\begingroup
+\small
+\renewcommand{\section}[2]{}
+\setlength{\itemsep}{1pt}
+\begin{multicols}{2}
+\begin{thebibliography}{99}
+\setlength{\itemsep}{1pt}
+
+\bibitem{o1card}
+OpenAI, ``OpenAI o1 system card,'' Sep. 2024, §CTF. [Online]. Available:
+\url{https://cdn.openai.com/o1-system-card.pdf}
+
+\bibitem{sandboxescape}
+R.~Marchand \emph{et al.}, ``Quantifying frontier LLM capabilities for
+container sandbox escape,'' in \emph{Proc. 43rd Int. Conf. Mach. Learn.
+(ICML)}, PMLR vol.~306, 2026, pp.~86682--86713, arXiv:2603.02277.
+
+\bibitem{gitconfig}
+Git Project, ``git-config(1): \texttt{core.fsmonitor},'' \emph{Git
+Documentation}. [Online]. Available:
+\url{https://git-scm.com/docs/git-config}
+
+\bibitem{swebench465}
+J.~Kahn, ``Repo state loopholes during agentic evaluation,'' SWE-bench
+GitHub, issue \#465, Sep. 2025. [Online]. Available:
+\url{https://github.com/SWE-bench/SWE-bench/issues/465}
+
+\bibitem{openaiverified}
+OpenAI, ``Why SWE-bench Verified no longer measures frontier coding
+capabilities,'' Feb. 2026. [Online]. Available:
+\url{https://openai.com/index/why-we-no-longer-evaluate-swe-bench-verified/}
+
+\bibitem{swebenchplus}
+R.~Aleithan \emph{et al.}, ``SWE-Bench+: Enhanced coding benchmark for
+LLMs,'' 2024, arXiv:2410.06992.
+
+\bibitem{inspect}
+UK AI Security Institute, ``Inspect AI: Framework for large language model
+evaluations,'' software, May 2024. [Online]. Available:
+\url{https://github.com/UKGovernmentBEIS/inspect_ai}
+
+\bibitem{cve5736}
+NIST National Vulnerability Database, ``CVE-2019-5736,'' Feb. 2019.
+[Online]. Available: \url{https://nvd.nist.gov/vuln/detail/CVE-2019-5736}
+
+\bibitem{cve21626}
+NIST National Vulnerability Database, ``CVE-2024-21626,'' Jan. 2024.
+[Online]. Available: \url{https://nvd.nist.gov/vuln/detail/CVE-2024-21626}
+
+\bibitem{gvisor}
+E.~G. Young, P.~Zhu, T.~Caraza-Harter, A.~C. Arpaci-Dusseau, and R.~H.
+Arpaci-Dusseau, ``The true cost of containing: A gVisor case study,'' in
+\emph{Proc. 11th USENIX Workshop Hot Topics Cloud Comput. (HotCloud)},
+2019.
+
+\bibitem{kata}
+Kata Containers Project, OpenInfra Foundation, ``Kata Containers,''
+software. [Online]. Available: \url{https://katacontainers.io/}
+
+\bibitem{firecracker}
+A.~Agache \emph{et al.}, ``Firecracker: Lightweight virtualization for
+serverless applications,'' in \emph{Proc. 17th USENIX Symp. Networked
+Syst. Design Implement. (NSDI)}, 2020, pp.~419--434.
+
+\bibitem{aisisandbox}
+UK AI Security Institute, ``The Inspect sandboxing toolkit: Scalable and
+secure AI agent evaluations,'' Aug. 2025. [Online]. Available:
+\url{https://aisi.gov.uk/blog/the-inspect-sandboxing-toolkit-scalable-and-secure-ai-agent-evaluations}
+
+\bibitem{impossiblebench}
+Z.~Zhong, A.~Raghunathan, and N.~Carlini, ``ImpossibleBench: Measuring
+LLMs' propensity of exploiting test cases,'' 2025, arXiv:2510.20270.
+
+\bibitem{evilgenie}
+J.~Gabor, J.~Lynch, and J.~Rosenfeld, ``EvilGenie: A reward hacking
+benchmark,'' 2025, arXiv:2511.21654.
+
+\bibitem{metrhack}
+S.~Von~Arx, L.~Chan, and E.~Barnes, ``Recent frontier models are reward
+hacking,'' METR, Jun. 2025. [Online]. Available:
+\url{https://metr.org/blog/2025-06-05-recent-reward-hacking}
+
+\bibitem{sandbagging}
+T.~van~der~Weij \emph{et al.}, ``AI sandbagging: Language models can
+strategically underperform on evaluations,'' 2024, arXiv:2406.07358.
+
+\bibitem{naturalmisalign}
+M.~MacDiarmid \emph{et al.}, ``Natural emergent misalignment from reward
+hacking in production RL,'' 2025, arXiv:2511.18397.
+
+\bibitem{swebenchlive}
+L.~Zhang \emph{et al.}, ``SWE-bench goes live!,'' 2025,
+arXiv:2505.23419.
+
+\bibitem{sweprover}
+P.~Zheng \emph{et al.}, ``SWE-Bench Pro Verified: A reliable benchmark
+for software engineering agents,'' 2026, arXiv:2609.08149.
+
+\bibitem{agentharm}
+M.~Andriushchenko \emph{et al.}, ``AgentHarm: A benchmark for measuring
+harmfulness of LLM agents,'' in \emph{Proc. Int. Conf. Learn. Represent.
+(ICLR)}, 2025, arXiv:2410.09024.
+
+\bibitem{ctrlaltdeceit}
+F.~R. Ward \emph{et al.}, ``CTRL-ALT-DECEIT: Sabotage evaluations for
+automated AI R\&D,'' in \emph{Adv. Neural Inf. Process. Syst.
+(NeurIPS)}, 2025, arXiv:2511.09904.
+
+\bibitem{vivaria}
+METR, ``Vivaria,'' GitHub repository. [Online]. Available:
+\url{https://github.com/METR/vivaria}
+
+\bibitem{lmeval}
+S.~Biderman \emph{et al.}, ``Lessons from the trenches on reproducible
+evaluation of language models,'' 2024, arXiv:2405.14782.
+
+\bibitem{helm}
+P.~Liang \emph{et al.}, ``Holistic evaluation of language models,''
+\emph{Trans. Mach. Learn. Res.}, 2023, arXiv:2211.09110.
+
+\bibitem{swebench}
+C.~E. Jimenez \emph{et al.}, ``SWE-bench: Can language models resolve
+real-world GitHub issues?,'' in \emph{Proc. Int. Conf. Learn. Represent.
+(ICLR)}, 2024, arXiv:2310.06770.
+
+\bibitem{terminalbench}
+M.~A. Merrill \emph{et al.}, ``Terminal-Bench: Benchmarking agents on
+hard, realistic tasks in command line interfaces,'' 2026,
+arXiv:2601.11868.
+
+\bibitem{rigorous}
+Y.~Zhu \emph{et al.}, ``Establishing best practices for building rigorous
+agentic benchmarks,'' 2025, arXiv:2507.02825.
+
+\bibitem{openhands}
+X.~Wang \emph{et al.}, ``OpenHands: An open platform for AI software
+developers as generalist agents,'' in \emph{Proc. Int. Conf. Learn.
+Represent. (ICLR)}, 2025, arXiv:2407.16741.
+
+\bibitem{swegym}
+J.~Pan \emph{et al.}, ``Training software engineering agents and verifiers
+with SWE-Gym,'' in \emph{Proc. 42nd Int. Conf. Mach. Learn. (ICML)}, 2025,
+arXiv:2412.21139.
+
+\bibitem{r2egym}
+N.~Jain \emph{et al.}, ``R2E-Gym: Procedural environments and hybrid
+verifiers for scaling open-weights SWE agents,'' 2025, arXiv:2504.07164.
+
+\bibitem{swesmith}
+J.~Yang \emph{et al.}, ``SWE-smith: Scaling data for software engineering
+agents,'' 2025, arXiv:2504.21798.
+
+\bibitem{sandboxeval}
+R.~Rabin, J.~Hostetler, S.~McGregor, B.~Weir, and N.~Judd,
+``SandboxEval: Towards securing test environment for untrusted code,''
+2025, arXiv:2504.00018.
+
+\bibitem{codesandboxes}
+G.~Andronchik and P.~Lokhmakov, ``AI code sandboxes: A comparative
+security study. Part 1 of 2 --- Engine-level properties,'' 2026,
+arXiv:2606.08433.
+
+\end{thebibliography}
+\end{multicols}
+\endgroup
 
 \end{document}

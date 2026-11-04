@@ -1,4 +1,4 @@
-% The whitepaper's shared figure style.
+% The whitepaper's shared figure style, after DESIGN.md (ChiffonStack).
 %
 % A figure is one file under `figures/`: it compiles on its own
 % (standalone, so it drops into any document) and is included by
@@ -8,15 +8,19 @@
 % arrow or border is a bug: the point of a style file is that figure 4
 % looks like it was drawn by whoever drew figure 1.
 %
-% Two media are in play, print and screen, and the paper may be read in
-% grayscale, so no meaning is carried by colour alone: every fill is
-% paired with a shape, a border style or a word.
+% Built with LuaLaTeX: the type is Quicksand (titles), Hanken Grotesk
+% (body) and JetBrains Mono (paths, commands), shipped in `fonts/` under
+% the SIL OFL, and the icons are Font Awesome 5 Free.
+%
+% The paper may be read in grayscale, so no meaning is carried by colour
+% alone: every fill is paired with a shape, a border style, an icon or a
+% word. Heat is used the way DESIGN.md uses it — for the hard part: the
+% live path through a figure, and the point where it breaks.
 
-\usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc}
-\usepackage{lmodern}
+\usepackage{fontspec}
 \usepackage{amsmath}
 \usepackage{xcolor}
+\usepackage{fontawesome5}
 \usepackage{tikz}
 \usetikzlibrary{
   arrows.meta,
@@ -25,58 +29,137 @@
   fit,
   positioning,
   shapes.geometric,
+  shapes.misc,
 }
 
-% --- palette -------------------------------------------------------------
-\definecolor{ink}{HTML}{1F2933}      % body text, commit markers
-\definecolor{slate}{HTML}{52606D}    % secondary text, plain arrows
-\definecolor{hair}{HTML}{9AA5B1}     % borders
-\definecolor{paper}{HTML}{F7F8FA}    % panel fill behind labels
-\definecolor{teal}{HTML}{0B7285}     % the bench's own things: sandbox,
-                                     % stack, stored artefacts
-\definecolor{amber}{HTML}{96590B}    % a caveat, a thing that cannot be
-                                     % relied on
-\definecolor{plum}{HTML}{6B2E4F}     % the answer key, and what is barred
-\definecolor{stop}{HTML}{A6242B}     % a crossed-out path
+% --- type ----------------------------------------------------------------
+\setmainfont{HankenGrotesk}[
+  Path=fonts/, Extension=.ttf,
+  UprightFont=*-400, BoldFont=*-700, ItalicFont=*-400-italic,
+  BoldItalicFont=*-700]
+\setsansfont{HankenGrotesk}[
+  Path=fonts/, Extension=.ttf,
+  UprightFont=*-400, BoldFont=*-700, ItalicFont=*-400-italic,
+  BoldItalicFont=*-700]
+\setmonofont{JetBrainsMono}[
+  Path=fonts/, Extension=.ttf, Scale=0.9,
+  UprightFont=*-Regular, BoldFont=*-Bold, ItalicFont=*-Italic,
+  BoldItalicFont=*-Bold]
+\newfontfamily\display{Quicksand}[
+  Path=fonts/, Extension=.ttf,
+  UprightFont=*-Medium, BoldFont=*-Bold]
+\newfontfamily\semibold{HankenGrotesk-600}[Path=fonts/, Extension=.ttf]
+
+% --- palette (DESIGN.md §2, light mode) ----------------------------------
+\definecolor{canvas}{HTML}{FFFFFF}   % the stage
+\definecolor{surface}{HTML}{F8F7F5}  % panels, bands
+\definecolor{sunken}{HTML}{F4F2EF}   % code, stored artefacts
+\definecolor{ink}{HTML}{18130F}      % text, what we own
+\definecolor{inksec}{HTML}{574F47}   % body text, plain arrows
+\definecolor{muted}{HTML}{6F665D}    % captions, metadata
+\definecolor{hair}{HTML}{E7E4E0}     % dividers
+\definecolor{strong}{HTML}{D8D4CF}   % box borders
+\definecolor{heatorange}{HTML}{FF8E05}
+\definecolor{heatmid}{HTML}{FF4715}  % the live path
+\definecolor{heatred}{HTML}{FF0024}  % where it breaks: a crossed path
+\definecolor{heatink}{HTML}{C4001A}  % heat as text: AA on white
+\definecolor{cool}{HTML}{6D4AFF}     % an imposed boundary: the sandbox
+\definecolor{warning}{HTML}{B26A00}  % a caveat
+\definecolor{success}{HTML}{1F9D55}  % a path that holds
+
+% --- icons ---------------------------------------------------------------
+% One macro per thing, so a figure never picks its own glyph for docker.
+\newcommand{\icdocker}{{\color{cool}\faDocker}}
+\newcommand{\icagent}{\faRobot}
+\newcommand{\ichost}{\faServer}
+\newcommand{\icdb}{\faDatabase}
+\newcommand{\icgit}{\faIcon{git-alt}}
+\newcommand{\icgithub}{\faGithub}
+\newcommand{\icweb}{\faGlobe}
+\newcommand{\icfile}{\faFile*}
+\newcommand{\icfolder}{\faFolderOpen}
+\newcommand{\icvolume}{\faHdd}
+\newcommand{\icnet}{\faNetworkWired}
+\newcommand{\iclock}{\faLock}
+\newcommand{\ickey}{\faKey}
+\newcommand{\icterm}{\faTerminal}
+\newcommand{\icbrowser}{\faChrome}
+\newcommand{\iceye}{\faEye}
+\newcommand{\icjudge}{\faBalanceScale}
+\newcommand{\icbug}{\faBug}
+\newcommand{\icwarn}{\faExclamationTriangle}
+\newcommand{\icok}{{\color{success}\faCheck}}
+\newcommand{\icno}{{\color{heatred}\faTimes}}
+\newcommand{\ictrace}{\faStream}
+\newcommand{\icuser}{\faUserSecret}
 
 % --- shapes --------------------------------------------------------------
 \tikzset{
   % text
-  every node/.style={font=\sffamily\small, text=ink},
-  title/.style={font=\sffamily\bfseries\small, text=ink, align=center},
-  note/.style={font=\sffamily\footnotesize, text=slate, align=left,
+  every node/.style={font=\small, text=ink},
+  title/.style={font=\display\bfseries\normalsize, text=ink, align=center},
+  sub/.style={font=\semibold\small, text=ink, align=center},
+  note/.style={font=\footnotesize, text=inksec, align=left, inner sep=1pt},
+  meta/.style={font=\ttfamily\scriptsize, text=muted, align=left,
     inner sep=1pt},
-  lbl/.style={font=\sffamily\footnotesize, text=slate, fill=paper,
+  lbl/.style={font=\footnotesize, text=inksec, fill=canvas,
     inner sep=1.5pt, align=center},
   % containers. A solid border is something we own; a dashed one is a
-  % boundary that was imposed.
-  panel/.style={draw=hair, fill=paper, rounded corners=4pt, inner sep=7pt,
-    line width=0.7pt},
-  sandbox/.style={draw=teal, fill=teal!4, rounded corners=4pt, dashed,
-    inner sep=7pt, line width=0.9pt},
-  outside/.style={draw=slate, fill=slate!3, rounded corners=4pt,
+  % boundary that was imposed on something we do not trust.
+  panel/.style={draw=strong, fill=surface, rounded corners=6pt,
     inner sep=7pt, line width=0.7pt},
+  host/.style={draw=ink, fill=canvas, rounded corners=6pt, inner sep=7pt,
+    line width=0.9pt},
+  sandbox/.style={draw=cool, fill=cool!4, rounded corners=6pt,
+    dash pattern=on 4pt off 2.5pt, inner sep=7pt, line width=1pt},
+  outside/.style={panel},
   % leaves
-  box/.style={draw=hair, fill=white, rounded corners=2pt, align=left,
-    inner sep=4pt, line width=0.6pt},
-  device/.style={draw=hair, fill=white, rounded corners=2pt,
-    align=center, inner sep=4pt, line width=0.6pt},
-  file/.style={draw=hair, fill=white, rounded corners=1pt, align=left,
-    inner sep=4pt, line width=0.6pt},
-  warn/.style={draw=amber, fill=amber!5, rounded corners=2pt, align=left,
-    inner sep=4pt, line width=0.7pt},
-  key/.style={draw=plum, fill=plum!6, rounded corners=2pt, align=left,
-    inner sep=4pt, line width=0.7pt},
-  db/.style={cylinder, shape border rotate=90, aspect=0.28, draw=hair,
-    fill=white, align=center, minimum height=9mm, minimum width=13mm,
-    inner sep=2pt, font=\sffamily\footnotesize},
-  commit/.style={draw=ink!60, fill=ink!6, align=center, inner sep=3pt,
+  box/.style={draw=strong, fill=canvas, rounded corners=3pt, align=left,
+    inner sep=4.5pt, line width=0.7pt},
+  device/.style={box, align=center},
+  file/.style={draw=strong, fill=sunken, rounded corners=2pt, align=left,
+    inner sep=4.5pt, line width=0.7pt},
+  code/.style={file, font=\ttfamily\footnotesize},
+  warn/.style={draw=warning, fill=warning!6, rounded corners=3pt,
+    align=left, inner sep=4.5pt, line width=0.8pt},
+  key/.style={draw=ink, fill=sunken, rounded corners=3pt, align=left,
+    inner sep=4.5pt, line width=1.1pt},
+  breach/.style={draw=heatred, fill=heatred!5, rounded corners=3pt,
+    align=left, inner sep=4.5pt, line width=1.1pt},
+  denied/.style={draw=heatred, fill=canvas, rounded corners=3pt,
+    dash pattern=on 3pt off 2pt, align=center, inner sep=4.5pt,
+    line width=0.9pt, text=muted},
+  held/.style={draw=success, fill=success!5, rounded corners=3pt,
+    align=left, inner sep=4.5pt, line width=0.8pt},
+  db/.style={cylinder, shape border rotate=90, aspect=0.28, draw=strong,
+    fill=canvas, align=center, minimum height=9mm, minimum width=13mm,
+    inner sep=2pt, font=\footnotesize, line width=0.7pt},
+  commit/.style={draw=ink!70, fill=sunken, align=center, inner sep=3pt,
     trapezium, trapezium left angle=72, trapezium right angle=108,
-    font=\sffamily\footnotesize},
+    font=\footnotesize},
+  tag/.style={draw=strong, fill=canvas, rounded rectangle,
+    font=\ttfamily\scriptsize, text=inksec, inner xsep=4pt,
+    inner ysep=2pt, line width=0.6pt},
+  % a numbered marker, for a figure whose items are an enumeration the
+  % text refers back to (and only then).
+  num/.style={circle, fill=ink, text=canvas, font=\semibold\scriptsize,
+    inner sep=1.2pt, minimum size=4.2mm},
+  hotnum/.style={num, fill=heatred},
   % edges. `flow` is data or control moving; `back` is a dashed one, used
-  % where the two ends are not one hand-off but a shared state.
-  flow/.style={-{Latex[length=1.8mm,width=1.4mm]}, draw=slate,
+  % where the two ends are not one hand-off but a shared state; `live` is
+  % the one path the figure is about.
+  flow/.style={-{Latex[length=1.8mm,width=1.4mm]}, draw=inksec,
     line width=0.7pt},
   back/.style={flow, dashed},
-  link/.style={draw=slate, dashed, line width=0.6pt},
+  live/.style={flow, draw=heatmid, line width=1.3pt},
+  attack/.style={-{Latex[length=2.2mm,width=1.8mm]}, draw=heatred,
+    line width=1.2pt},
+  probe/.style={attack, dash pattern=on 3pt off 2pt, line width=0.9pt},
+  link/.style={draw=inksec, dashed, line width=0.6pt},
+  cross/.style={draw=heatred, line width=1.2pt},
 }
+
+% A crossed-out node: `\barred{name}`.
+\newcommand{\barred}[1]{%
+  \draw[cross] (#1.south west) -- (#1.north east);
+  \draw[cross] (#1.north west) -- (#1.south east);}

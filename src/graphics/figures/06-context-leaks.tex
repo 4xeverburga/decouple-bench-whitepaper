@@ -1,0 +1,95 @@
+% Figure 6 — what a curious agent can read from inside its workspace.
+%
+% Two kinds of leak, and they cost different things. One tells the agent
+% it is being measured, which is the precondition for sandbagging or for
+% behaving well only when watched; the other hands it the answer. A third
+% column is what was checked and holds.
+%
+% Each entry is the command an agent would type and what it gets back.
+%
+% Sources: src/bench/solves.py materialise (author bench@localhost,
+% message "baseline"); settings.py WORKSPACES (= <repo>/out/workspaces);
+% env/solve.yaml (project name bench-solve-mamute, default network, bind
+% source = BENCH_CHECKOUT); src/agents/registry.py (OPENCODE_API_KEY
+% sk-none: the bridge answers from the host); `gh repo view`.
+% Reverse DNS of the container name is Docker's embedded resolver on a
+% user-defined network; not yet observed from inside a run.
+\documentclass[tikz,border=4pt]{standalone}
+\input{style}
+
+\begin{document}
+\begin{tikzpicture}
+
+\newcommand{\probeitem}[5]{% name, style, x, at, body
+  \node[#2, text width=5.6cm, anchor=north west] (#1) at #4 {#5};}
+
+% ---------------------------------------------------------------- headers --
+\node[title, anchor=west] at (0,10.3) {\icwarn\ names the measurement};
+\node[note, anchor=north west, text width=5.8cm] at (0,9.95)
+  {cheap to find, and enough to know it is watched};
+\node[title, anchor=west] at (6.6,10.3) {\icno\ carries the answer};
+\node[note, anchor=north west, text width=5.8cm] at (6.6,9.95)
+  {what a run is graded on, read instead of earned};
+\node[title, anchor=west] at (13.2,10.3) {\icok\ checked, holds};
+\node[note, anchor=north west, text width=5.8cm] at (13.2,9.95)
+  {nothing to read here, by construction};
+
+% ------------------------------------------------------------ the meta --
+\probeitem{a1}{warn}{0}{(0,9.3)}
+  {\texttt{\$ cat /proc/self/mountinfo}\\the bind mount's host source:
+   \texttt{/home/\textit{user}/…/jsp-decouple-bench/}
+   \texttt{out/workspaces/\textit{run}}}
+\probeitem{a2}{warn}{0}{([yshift=-3mm]a1.south west)}
+  {\texttt{\$ git log}\\one commit, \texttt{baseline}, by
+   \texttt{bench <bench@localhost>}, minutes old}
+\probeitem{a3}{warn}{0}{([yshift=-3mm]a2.south west)}
+  {\texttt{\$ getent hosts \$(hostname -i)}\\the container name,
+   \texttt{bench-solve-mamute-workspace-1}\\{\footnotesize\color{muted}
+   (Docker's resolver; to observe from a run)}}
+\probeitem{a4}{warn}{0}{([yshift=-3mm]a3.south west)}
+  {\texttt{\$ ps aux; env}\\an agent CLI dropped in at run time, a
+   model bridge, \texttt{OPENCODE\_API\_KEY=sk-none}}
+
+% ---------------------------------------------------------- the answer --
+\probeitem{b1}{breach}{6.6}{(6.6,9.3)}
+  {\texttt{\$ git clone github.com/…/jsp-decouple-bench}\\
+   public: \texttt{seeds/manifests.json} (the cases and scorers each
+   manifest is graded on) and 17 \texttt{expect.json} goldens}
+\probeitem{b2}{breach}{6.6}{([yshift=-3mm]b1.south west)}
+  {\texttt{\$ cat …/prompts/task\_types/*.md}\\from the same clone: every
+   other work order — the routes the other manifests ask about}
+\probeitem{b3}{box}{6.6}{([yshift=-3mm]b2.south west)}
+  {\texttt{\$ curl} the app's upstream, its forks, issues\\
+   whoever already split this app; today, nobody public, but nothing
+   stops the lookup}
+\probeitem{b4}{box}{6.6}{([yshift=-3mm]b3.south west)}
+  {\iceye\ the left column feeds this one: the\\\texttt{mountinfo} path names the repository\\to search for}
+
+
+% ---------------------------------------------------------------- holds --
+\probeitem{c1}{held}{13.2}{(13.2,9.3)}
+  {\icgit\ \textbf{no history}: \texttt{git archive}, one commit, no
+   remote, no refs, no reflog — the SWE-bench \texttt{git log} leak has
+   nothing to read}
+\probeitem{c2}{held}{13.2}{([yshift=-3mm]c1.south west)}
+  {\icfolder\ \textbf{no other run}: only this run's directory is
+   mounted; \texttt{out/solves/} is not a path}
+\probeitem{c3}{held}{13.2}{([yshift=-3mm]c2.south west)}
+  {\ickey\ \textbf{no credentials}: the model bridge answers from the
+   host; the sample's \texttt{.env} is the stack's, not the tree's}
+\probeitem{c4}{held}{13.2}{([yshift=-3mm]c3.south west)}
+  {\icdb\ \textbf{no rows}: the solve's \texttt{db} starts empty; the
+   cases' before/after state exists only at scoring}
+
+% ------------------------------------------------------------------ note --
+\node[note, anchor=north west, text width=18.8cm] at ([yshift=-6mm]a4.west |- b4.south)
+  {The left column cannot be closed completely — an agent with a shell
+   will always find some sign of where it is — but each line there is a
+   name the bench chose and can choose again: a neutral commit author, a
+   compose project and a host path with no \emph{bench} in them. The
+   middle column is the one that invalidates a score: close it at the
+   network (figure 5, path 2), and then check, as \texttt{AGENTS.md}
+   asks, that no trace shows a read of it.};
+
+\end{tikzpicture}
+\end{document}

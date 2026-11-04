@@ -1,0 +1,118 @@
+% Figure 5 — five ways out of the solve sandbox, ordered by what they cost.
+%
+% A threat model, not a claim that any run did this. Each path is a fact
+% about the configuration as it is: who runs what, on which side of the
+% container boundary, with which privileges.
+%
+%   1  host-side git reads a .git/ the agent wrote      (cleanup hook)
+%   2  network egress reaches the public bench repo     (default bridge)
+%   3  root writes through the bind mount               (no userns, no nosuid)
+%   4  a runtime or kernel escape                       (runc, plain runc)
+%   5  the agent's code runs again at scoring time      (build + front)
+%
+% Sources: src/bench/solves.py capture (git add -N / git diff on the
+% host checkout); env/solve.yaml (no networks:, writable host mount, no
+% user:); toolbox/Containerfile (no USER); env/compose.yaml (front and
+% collector on `api`, front built from the tree); `id` on the supervisor
+% host (group docker); `gh repo view` (PUBLIC); CVE-2019-5736,
+% CVE-2024-21626; SandboxEscapeBench (Marchand et al., ICML 2026).
+\documentclass[tikz,border=4pt]{standalone}
+\input{style}
+
+\begin{document}
+\begin{tikzpicture}
+
+% ------------------------------------------------------------- the agent --
+\node[box, text width=3.4cm] (ag) at (1.9,7.6)
+  {\icagent\ \textbf{agent}, uid 0\\a shell, \texttt{curl},\\\texttt{mvn},
+   \texttt{node}, \texttt{git}};
+\node[box, text width=3.4cm] (mnt) at (1.9,5.2)
+  {\icfolder\ \texttt{/workspace}\\bind mount, rw\\incl.\ \texttt{.git/}};
+\node[tag] (nt) at (1.9,3.4) {\icnet\ bridge · egress open};
+\node[tag] (ns) at (1.9,2.8) {no userns · default caps};
+\draw[flow] (ag) -- (mnt);
+\coordinate (snw) at (0.0,9.0);
+\coordinate (sse) at (3.8,2.2);
+\begin{scope}[on background layer]
+  \node[sandbox, fit=(snw) (sse)] (sb) {};
+\end{scope}
+\node[title, anchor=south] at (sb.north) {\icdocker\ solve sandbox};
+
+% ------------------------------------------------------------ the targets --
+% one row per path: marker, target, what it buys, how to close it
+\newcommand{\row}[7]{%
+  \node[#4, text width=5.0cm, minimum height=2.45cm, anchor=north west]
+    (t#1) at (6.9,#3) {#5};
+  \node[#2, anchor=east] (m#1) at ([xshift=-2mm]t#1.west) {#1};
+  \node[note, text width=4.6cm, anchor=north west] (g#1)
+    at (12.4,#3-0.1) {#6};
+  \node[held, text width=4.9cm, minimum height=2.45cm, anchor=north west]
+    (f#1) at (17.3,#3) {#7};
+}
+
+\node[sub, anchor=west] at (6.9,10.75) {path};
+\node[sub, anchor=west] at (12.4,10.75) {what it buys};
+\node[sub, anchor=west] at (17.3,10.75) {\icok\ how to close it};
+
+\row{1}{hotnum}{10.3}{breach}
+  {\icgit\ \textbf{host git on the agent's \texttt{.git/}}\\
+   the cleanup hook runs \texttt{git add -N}, \texttt{git diff} on the
+   host, against \texttt{.git/config} the agent could edit:
+   \texttt{core.fsmonitor} is a command}
+  {code execution \textbf{on the host}, as the supervisor — who is in
+   group \texttt{docker}: root-equivalent, every \texttt{.env}, the
+   goldens}
+  {never run git on a tree the agent wrote: keep \texttt{GIT\_DIR}
+   outside the mount, or \texttt{-c core.fsmonitor=} \texttt{-c
+   core.hooksPath=/dev/null}, and diff a copy without \texttt{.git/}}
+
+\row{2}{hotnum}{7.65}{breach}
+  {\icgithub\ \textbf{the public bench repository}\\
+   \texttt{curl} or \texttt{git clone} over the default bridge}
+  {the prompts, the manifests and 17 \texttt{expect.json} goldens — the
+   answer key, without leaving the container}
+  {make the repository private; give the sandbox an \texttt{internal}
+   network and a proxy that allows only the registries}
+
+\row{3}{num}{5.0}{box}
+  {\icvolume\ \textbf{the bind mount, written as root}\\
+   files land on the host owned by uid 0; setuid bits and symlinks
+   survive}
+  {a setuid-root binary in the supervisor's home; links a later host
+   tool may follow; a tree \texttt{rmtree} cannot remove}
+  {\texttt{user:} a non-root uid, or userns-remap / rootless docker;
+   mount \texttt{nosuid}; refuse symlinks out of the tree}
+
+\row{4}{num}{2.35}{box}
+  {\icbug\ \textbf{the container runtime or kernel}\\
+   runc CVE-2019-5736, CVE-2024-21626 (Leaky Vessels): root in a plain
+   runc container is one patch away from the host}
+  {the host, if \texttt{runc} or the kernel is behind; frontier models
+   already land these on purpose}
+  {patch the runtime; run the sandbox under gVisor (\texttt{runsc}), Kata
+   or a Firecracker microVM}
+
+\row{5}{num}{-0.3}{box}
+  {\ictrace\ \textbf{its own code, at scoring time}\\
+   \texttt{docker build} runs the tree's Maven plugins and npm scripts;
+   \texttt{front} shares \texttt{api} with the collector}
+  {forged OTLP spans in \texttt{trace.json}'s place; span text written to
+   the judge (prompt injection); a flow told apart from a user}
+  {build offline from a host-owned pom; one network per hop, collector
+   reachable only by the agent jar; quote span text to the judge}
+
+\foreach \i in {1,...,5} {
+  \draw[\ifnum\i<3 attack\else probe\fi] (sb.east |- m\i) -- (m\i.west);
+}
+
+% ----------------------------------------------------------------- note --
+\node[note, anchor=north west, text width=22cm] at (0.0,-3.05)
+  {Paths 1 and 2 need no exploit, only a configuration that is already
+   there: an agent that looks around finds them. Path 3 needs no exploit
+   either, but pays only once someone on the host runs what it left. Path
+   4 needs an unpatched runtime. Path 5 is not an escape from the sandbox
+   but into the measurement: the agent's code is trusted twice more after
+   the solve ends.};
+
+\end{tikzpicture}
+\end{document}

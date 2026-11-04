@@ -1,78 +1,101 @@
 % Figure 1 — one run is two phases, and they do not share a container.
 %
-% Left: the solve, which Inspect runs in a sandbox because the agent needs
-% a shell. Right: the score, which runs on the host because the scorer
-% starts the app's own stack. The only thing that crosses is the tree.
+% Left: the solve, which Inspect runs as a docker compose sandbox because
+% the agent needs a shell. Right: the score, which runs on the host
+% because the scorer starts the app's own stack. The only thing that
+% crosses is the tree, through one bind mount and one copy.
 %
 % Sources: AGENTS.md ("the bench owns the stack", "one sample, one stack"),
-% src/bench/solves.py, src/bench/stack.py, specs/behavior.md §1-2.
-\documentclass[tikz,border=3pt]{standalone}
+% src/samples/mamute/env/solve.yaml, src/samples/mamute/env/compose.yaml,
+% src/bench/solves.py, src/bench/stack.py, main.py (capture_solution).
+\documentclass[tikz,border=4pt]{standalone}
 \input{style}
 
 \begin{document}
 \begin{tikzpicture}[node distance=5mm and 6mm]
 
 % ---------------------------------------------------------------- solve --
-\node[file, text width=4.6cm] (wo)
-  {\textbf{work order}\\the task type's contract\\ + the manifest's ask};
-\node[device, text width=4.6cm, below=of wo] (agent)
-  {\textbf{agent}\\one profile of \texttt{runs.yaml}};
-\node[device, text width=4.6cm, below=of agent] (ws)
-  {\textbf{workspace}\\the pinned tree at \texttt{/workspace},\\writable,
-   caches warm};
-\node[db, right=8mm of ws] (db) {db};
-\node[note, below=2mm of db, text width=1.8cm, align=center] (dbnote)
-  {MySQL 5.7,\\the app's own};
-\node[file, text width=4.6cm, below=15mm of ws] (kept)
-  {\textbf{out/solves/\textit{run}/}\\\texttt{record.json}\\
-   \texttt{diff.patch} \quad \texttt{tree/}};
+\node[file, text width=4.8cm] (wo)
+  {\icfile\ \textbf{work order}\\the task type's contract\\
+   + the manifest's ask};
+\node[device, text width=4.8cm, below=of wo] (agent)
+  {\icagent\ \textbf{agent CLI}\\one \texttt{solve\_profiles} entry};
+\node[device, text width=4.8cm, below=of agent] (ws)
+  {\icdocker\ \textbf{service} \texttt{workspace}\\
+   image \texttt{bench-solve-mamute:local}\\
+   JDK 8 · Maven · Node 16, \texttt{\textasciitilde/.m2} warm};
+\node[db, right=9mm of ws] (db) {\icdb\\ \texttt{db}};
+\node[meta, below=2mm of db, text width=2cm, align=center] (dbnote)
+  {mysql:5.7\\sidecar, empty};
+\node[tag, below=4mm of ws] (bind)
+  {\icfolder\ bind mount (rw) \,\texttt{/workspace}};
+\node[tag, below=2mm of bind] (net)
+  {\icnet\ network \texttt{default} · bridge · egress open};
 
 \draw[flow] (wo) -- node[lbl, right] {prompt} (agent);
-\draw[flow] (agent) -- node[lbl, right] {edits} (ws);
+\draw[flow] (agent) -- node[lbl, right] {\texttt{bash}, edits} (ws);
 \draw[link] (ws) -- (db);
-\draw[flow] (ws) -- node[lbl, right] {cleanup hook} (kept);
 
 \begin{scope}[on background layer]
-  \node[sandbox, fit=(wo) (agent) (ws) (db) (dbnote) (kept), inner sep=4mm]
-    (sandbox) {};
+  \node[sandbox, fit=(wo) (agent) (ws) (db) (dbnote) (bind) (net),
+    inner sep=4mm] (sandbox) {};
 \end{scope}
-\node[title, anchor=south, text width=7.6cm] at (sandbox.north)
-  {1 \, solve — a sandbox, an agent, a tree};
+\node[title, anchor=south] at (sandbox.north)
+  {\icdocker\ solve — compose project \texttt{bench-solve-mamute}};
+
+% the host side of the bind mount, and what is kept
+\node[file, text width=4.8cm, below=12mm of sandbox.south -| ws]
+  (wsdir) {\ichost\ \textbf{host:} \texttt{out/workspaces/\textit{run}/}\\
+   the bind mount's source, read by\\the cleanup hook};
+\node[file, text width=4.8cm, below=6mm of wsdir] (kept)
+  {\icvolume\ \textbf{out/solves/\textit{run}/}\\\texttt{record.json}
+   \quad \texttt{diff.patch} \quad \texttt{tree/}};
+\draw[back] (bind.south) -- (wsdir.north);
+\draw[flow] (wsdir) -- node[lbl, right]
+  {\texttt{git diff} + \texttt{copytree}} (kept);
 
 % ---------------------------------------------------------------- score --
-\node[device, text width=4.6cm, right=22mm of sandbox.east |- wo]
-  (pw) {\textbf{Playwright}\\on the host};
-\node[device, text width=4.6cm, below=of pw] (port)
-  {the app's published port\\\texttt{APP\_HTTP\_PORT}};
-\node[db, below=8mm of port] (db2) {db};
-\node[note, below=3mm of db2, text width=3.6cm, align=center]
-  {a fresh volume: empty\\at the start of every case};
-\node[file, text width=4.6cm, below=19mm of db2] (delta)
-  {\textbf{before} / \textbf{after} snapshots\\$\to$ delta against
-   \texttt{expect.json}};
+\node[device, text width=4.8cm, right=26mm of sandbox.east |- wo]
+  (pw) {\icbrowser\ \textbf{Playwright}, on the host\\
+   plays \texttt{flow.py} once per case};
+\node[device, text width=4.8cm, below=of pw] (port)
+  {\icdocker\ service \texttt{front}\\
+   image built from \texttt{tree/}\\published \texttt{:8090}\,$\to$\,\texttt{8080}};
+\node[db, below left=7mm and -14mm of port] (db2) {\icdb\\ \texttt{db}};
+\node[device, below right=8mm and -16mm of port] (col)
+  {\ictrace\ \texttt{collector}\\OTLP};
+\node[tag, below=3mm of db2, xshift=4mm] (vol)
+  {\icvolume\ volumes \texttt{db-data} \texttt{traces}};
+\node[tag, below=2mm of vol] (nets)
+  {\icnet\ networks \texttt{api} \texttt{data}};
+\node[file, text width=4.8cm, below=5mm of nets] (delta)
+  {\textbf{before} / \textbf{after} rows\\$\to$ delta against
+   \texttt{expect.json}\\ + spans $\to$ \texttt{trace.json}};
 
-\draw[flow] (pw) -- (port);
+\draw[flow] (pw) -- node[lbl, right] {HTTP} (port);
 \draw[flow] (port) -- (db2);
-\draw[flow] (db2) -- (delta);
+\draw[flow] (port) -- (col);
 
 \begin{scope}[on background layer]
-  \node[panel, fit=(pw) (port) (db2) (delta)] (scoring) {};
+  \node[panel, fit=(pw) (port) (db2) (col) (vol) (nets) (delta),
+    inner sep=4mm] (scoring) {};
 \end{scope}
-\node[title, anchor=south, text width=7.4cm] at (scoring.north)
-  {2 \, score — on the host, one stack per case};
+\node[title, anchor=south] at (scoring.north)
+  {\ichost\ score — on the host, one stack per case};
 
 % ---------------------------------------------------------- the handoff --
-\draw[flow, line width=1pt, draw=teal]
-  (kept.east) -- node[lbl, above, align=center]
-  {\texttt{BENCH\_CHECKOUT}\\= the tree} (scoring.west |- kept);
+\draw[live] (kept.east) -| node[lbl, pos=0.25, above, align=center]
+  {\texttt{BENCH\_CHECKOUT}\\= \texttt{tree/}, the build context}
+  (scoring.south);
 
-\node[note, anchor=north west, text width=11.4cm]
-  at ($(sandbox.south west) + (0,-7mm)$)
-  {The driver carries exactly two things between the two phases: a run id,
+\node[note, anchor=north west, text width=15cm]
+  at ($(kept.south west) + (0,-6mm)$)
+  {The driver carries exactly two things between the phases: a run id,
    which names \texttt{out/solves/\textit{run}/}, and the tree that id
-   names. A stale \texttt{BENCH\_CHECKOUT} is the one failure it cannot
-   catch, which is why scoring derives it from the id rather than
-   accepting it as input.};
+   names. The model's credentials never enter the sandbox: the agent CLI
+   talks to Inspect's model bridge, and the bridge answers from the host.
+   The tree, however, does cross — twice: into host-side \texttt{git} at
+   cleanup, and into \texttt{docker build} at scoring (figure 5).};
 
 \end{tikzpicture}
 \end{document}
