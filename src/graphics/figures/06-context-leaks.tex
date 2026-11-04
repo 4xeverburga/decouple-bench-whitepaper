@@ -7,13 +7,11 @@
 %
 % Each entry is the command an agent would type and what it gets back.
 %
-% Sources: src/bench/solves.py materialise (author bench@localhost,
-% message "baseline"); settings.py WORKSPACES (= <repo>/out/workspaces);
-% env/solve.yaml (project name bench-solve-mamute, default network, bind
-% source = BENCH_CHECKOUT); src/agents/registry.py (OPENCODE_API_KEY
-% sk-none: the bridge answers from the host); `gh repo view`.
-% Reverse DNS of the container name is Docker's embedded resolver on a
-% user-defined network; not yet observed from inside a run.
+% Sources: src/bench/solves.py materialise/capture; settings.py
+% GIT_AUTHOR_EMAIL; env/solve.yaml (project names application-mysql and
+% application-postgres); src/agents/registry.py (OPENCODE_API_KEY sk-none).
+% The actual mount path and container DNS response have not been observed
+% from inside a live solve.
 \documentclass[tikz,border=4pt]{standalone}
 \input{style}
 
@@ -37,18 +35,19 @@
 % ------------------------------------------------------------ the meta --
 \probeitem{a1}{warn}{0}{(0,9.3)}
   {\texttt{\$ cat /proc/self/mountinfo}\\the bind mount's host source:
-   \texttt{/home/\textit{user}/…/jsp-decouple-bench/}
-   \texttt{out/workspaces/\textit{run}}}
+   \texttt{/tmp/application-\textit{id}/workspace}\\{\footnotesize
+   (temporary path; no repository or run name)}}
 \probeitem{a2}{warn}{0}{([yshift=-3mm]a1.south west)}
-  {\texttt{\$ git log}\\one commit, \texttt{baseline}, by
-   \texttt{bench <bench@localhost>}, minutes old}
+  {\texttt{\$ git log}\\one generic import commit by
+   \texttt{Developer <configured email>}}
 \probeitem{a3}{warn}{0}{([yshift=-3mm]a2.south west)}
-  {\texttt{\$ getent hosts \$(hostname -i)}\\the container name,
-   \texttt{bench-solve-mamute-workspace-1}\\{\footnotesize\color{muted}
-   (Docker's resolver; to observe from a run)}}
+  {\texttt{\$ getent hosts \$(hostname -i)}\\project name:
+   \texttt{application-mysql}\\{\footnotesize\color{muted}
+   (container DNS name still needs a live-run check)}}
 \probeitem{a4}{warn}{0}{([yshift=-3mm]a3.south west)}
   {\texttt{\$ ps aux; env}\\an agent CLI dropped in at run time, a
-   model bridge, \texttt{OPENCODE\_API\_KEY=sk-none}}
+   model bridge, \texttt{OPENCODE\_API\_KEY=sk-none}\\{\footnotesize
+   (the visible placeholder remains a potential tell)}}
 
 % ---------------------------------------------------------- the answer --
 \probeitem{b1}{breach}{6.6}{(6.6,9.3)}
@@ -68,28 +67,29 @@
 
 % ---------------------------------------------------------------- holds --
 \probeitem{c1}{held}{13.2}{(13.2,9.3)}
-  {\icgit\ \textbf{no history}: \texttt{git archive}, one commit, no
-   remote, no refs, no reflog — the SWE-bench \texttt{git log} leak has
+  {\icgit\ \textbf{no source history}: \texttt{git archive}, one generic
+   commit, no remote, refs or reflog — the SWE-bench history leak has
    nothing to read}
 \probeitem{c2}{held}{13.2}{([yshift=-3mm]c1.south west)}
-  {\icfolder\ \textbf{no other run}: only this run's directory is
-   mounted; \texttt{out/solves/} is not a path}
+  {\icfolder\ \textbf{no other run}: only a temporary checkout is
+   mounted; repository output paths are not exposed}
 \probeitem{c3}{held}{13.2}{([yshift=-3mm]c2.south west)}
-  {\ickey\ \textbf{no credentials}: the model bridge answers from the
-   host; the sample's \texttt{.env} is the stack's, not the tree's}
+  {\ickey\ \textbf{no provider credentials}: the bridge answers from the
+   host; the sample's \texttt{.env} is not in the tree. The synthetic
+   \texttt{sk-none} marker remains visible}
 \probeitem{c4}{held}{13.2}{([yshift=-3mm]c3.south west)}
   {\icdb\ \textbf{no rows}: the solve's \texttt{db} starts empty; the
    cases' before/after state exists only at scoring}
 
 % ------------------------------------------------------------------ note --
 \node[note, anchor=north west, text width=18.8cm] at ([yshift=-6mm]a4.west |- b4.south)
-  {The left column cannot be closed completely — an agent with a shell
-   will always find some sign of where it is — but each line there is a
-   name the bench chose and can choose again: a neutral commit author, a
-   compose project and a host path with no \emph{bench} in them. The
-   middle column is the one that invalidates a score: close it at the
-   network (figure 5, path 2), and then check, as \texttt{AGENTS.md}
-   asks, that no trace shows a read of it.};
+  {The first three lines now use neutral names: a temporary host path, a
+   generic Git commit and a project name without \emph{bench}. Their
+   in-container mount and DNS values still need live-run verification.
+   The CLI and bridge remain visible, and \texttt{sk-none} is an
+   evaluation-shaped placeholder. The middle column is the one that
+   invalidates a score: close it at the network (figure 5, path 2), then
+   check, as \texttt{AGENTS.md} asks, that no trace shows a read of it.};
 
 \end{tikzpicture}
 \end{document}

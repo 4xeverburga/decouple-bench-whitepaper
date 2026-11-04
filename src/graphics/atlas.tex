@@ -233,20 +233,21 @@ watched, and the reward-hacking literature finds it shifts what models
 do~\cite{impossiblebench, naturalmisalign}.
 \begin{itemize}
 \item \texttt{/proc/self/mountinfo} prints the bind mount's host source:
-  \texttt{…/jsp-decouple-bench/out/workspaces/\textit{run}} — the
-  repository's name, the user's home, the run id.
-\item \texttt{git log}: one commit, \texttt{baseline}, by \texttt{bench
-  <bench@localhost>}, minutes old.
-\item The compose project is \texttt{bench-solve-mamute}; on a
-  user-defined network Docker's resolver answers the container's own name
-  (to be confirmed from inside a run).
+  now a temporary \texttt{/tmp/application-\textit{id}/workspace} path,
+  without the repository, home directory or run id.
+\item \texttt{git log}: one generic import commit by \texttt{Developer};
+  the email is configurable and no upstream history is present.
+\item The compose project now uses \texttt{application-mysql} or
+  \texttt{application-postgres}; its in-container DNS name still needs a
+  live-run check.
 \item \texttt{ps} and \texttt{env} show an agent CLI copied in at run time
-  and a model bridge, with \texttt{OPENCODE\_API\_KEY=sk-none}.
+  and a model bridge, with the visible placeholder
+  \texttt{OPENCODE\_API\_KEY=sk-none}.
 \end{itemize}
-Each of these is a name the bench chose and can choose again: a neutral
-commit author, a project name and a host path with no \emph{bench} in
-them. The bridge cannot be hidden, and need not be: an agent CLI is what
-any developer's machine runs.
+The host path, commit message and project names are now neutral. The
+CLI and bridge are part of the execution setup and remain visible; the
+placeholder key is still a potential tell. The bridge cannot be hidden,
+and need not be: an agent CLI is what any developer's machine runs.
 
 \subsection*{Carries the answer}
 These invalidate a score. A run that read one is a leak, not a
