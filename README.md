@@ -10,12 +10,8 @@ This repository is graphics only for now.
 
 | file | what it claims |
 |---|---|
-| `01-two-phases` | a run is two evals — a solve inside Inspect's sandbox, a score on the host — and the only thing that crosses is the tree |
-| `02-agent-boundary` | the sandbox has the tree and a database sidecar, and no path to the bench, the goldens or the docker socket |
-| `03-workspace-provenance` | the workspace is an extracted archive committed once, not a clone: no history, no refs, no reflog; what comes back is that tree plus one diff |
-| `04-case-isolation` | one case, one compose project, an empty database, and `down -v` before the next |
-| `05-escape-paths` | five ways out of the solve sandbox, by cost: host git on the agent's `.git/`, the public repo over open egress, root through the bind mount, a runtime escape, the agent's code at scoring time |
-| `06-context-leaks` | what a shell inside the workspace can read: what names the measurement, what carries the answer, and what holds |
+| `01-two-phases` | a run is two evals on one host — solves in Inspect sandboxes, scores in one stack per case, each side by side — and the only thing that crosses is the tree, as host files |
+| `02-case-isolation` | one case, one compose project on its own free port, an empty database, `down -v` after; cases side by side, up to a host-wide cap |
 
 Each figure is a file that names the sources it was drawn from, so a
 claim can be checked against the code rather than believed.
@@ -35,7 +31,7 @@ make clean
 ```
 
 Output lands in `build/`: one PDF per figure, plus `atlas.pdf`, a landscape
-page per figure for review, the threat model behind figures 5 and 6, where
+page per figure for review, the threat model behind them, where
 the harness sits in the literature, and IEEE references.
 
 ## Layout

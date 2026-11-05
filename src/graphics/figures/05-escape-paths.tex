@@ -4,14 +4,15 @@
 % about the configuration as it is: who runs what, on which side of the
 % container boundary, with which privileges.
 %
-%   1  host-side git reads a .git/ the agent wrote      (cleanup hook)
+%   1  host-side git reads a .git/ the agent wrote      (closed: 2ba4f94)
 %   2  network egress reaches the public bench repo     (default bridge)
 %   3  root writes through the bind mount               (no userns, no nosuid)
 %   4  a runtime or kernel escape                       (runc, plain runc)
 %   5  the agent's code runs again at scoring time      (build + front)
 %
-% Sources: src/bench/solves.py capture (git add -N / git diff on the
-% host checkout); env/solve.yaml (no networks:, writable host mount, no
+% Sources: src/bench/solves.py capture (git add -N / git diff on a
+% host-only baseline, -c core.fsmonitor=false, hooksPath=/dev/null,
+% GIT_CONFIG_GLOBAL=/dev/null); env/solve.yaml (no networks:, writable host mount, no
 % user:); toolbox/Containerfile (no USER); env/compose.yaml (front and
 % collector on `api`, front built from the tree); `id` on the supervisor
 % host (group docker); `gh repo view` (PUBLIC); CVE-2019-5736,
@@ -33,10 +34,15 @@
 \draw[flow] (ag) -- (mnt);
 \coordinate (snw) at (0.0,9.0);
 \coordinate (sse) at (3.8,2.2);
+\node[hosttab, anchor=north west] at (-0.45,10.6) {\ichost\ the host};
 \begin{scope}[on background layer]
+  \draw[hostframe] (-0.75,-2.75) rectangle (5.35,10.9);
   \node[sandbox, fit=(snw) (sse)] (sb) {};
 \end{scope}
 \node[title, anchor=south] at (sb.north) {\icdocker\ solve sandbox};
+\node[file, text width=4.6cm, align=center] (hostdir) at (2.3,-1.0)
+  {\icfolder\ \texttt{/tmp/application-\textit{id}/}\\
+   \texttt{baseline/.git} stays here, unmounted};
 
 % ------------------------------------------------------------ the targets --
 % one row per path: marker, target, what it buys, how to close it
@@ -54,17 +60,15 @@
 \node[sub, anchor=west] at (12.4,10.75) {what it buys};
 \node[sub, anchor=west] at (17.3,10.75) {\icok\ how to close it};
 
-\row{1}{hotnum}{10.3}{breach}
+\row{1}{num}{10.3}{box}
   {\icgit\ \textbf{host git on the agent's \texttt{.git/}}\\
-   the cleanup hook runs \texttt{git add -N}, \texttt{git diff} on the
-   host, against \texttt{.git/config} the agent could edit:
-   \texttt{core.fsmonitor} is a command}
-  {code execution \textbf{on the host}, as the supervisor — who is in
-   group \texttt{docker}: root-equivalent, every \texttt{.env}, the
-   goldens}
-  {never run git on a tree the agent wrote: keep \texttt{GIT\_DIR}
-   outside the mount, or \texttt{-c core.fsmonitor=} \texttt{-c
-   core.hooksPath=/dev/null}, and diff a copy without \texttt{.git/}}
+   \textbf{closed}: the diff is taken in a host-only
+   \texttt{baseline/}, from a copy without \texttt{.git/}, with
+   \texttt{core.fsmonitor=false}, no hooks and no global config}
+  {was: code execution \textbf{on the host}, as the supervisor — who is
+   in group \texttt{docker}: root-equivalent}
+  {\icok\ done in \texttt{2ba4f94}. Keep it: no host \texttt{git} call
+   may ever take the mounted tree as its \texttt{-C}}
 
 \row{2}{hotnum}{7.65}{breach}
   {\icgithub\ \textbf{the public bench repository}\\
@@ -101,18 +105,13 @@
   {build offline from a host-owned pom; one network per hop, collector
    reachable only by the agent jar; quote span text to the judge}
 
-\foreach \i in {1,...,5} {
-  \draw[\ifnum\i<3 attack\else probe\fi] (sb.east |- m\i) -- (m\i.west);
-}
+\draw[attack] (sb.east |- m2) -- (m2.west);
+\foreach \i in {3,4,5} {\draw[probe] (sb.east |- m\i) -- (m\i.west);}
+\draw[flow, draw=success, line width=1pt] (sb.east |- m1) --
+  coordinate[pos=0.5] (c1) (m1.west);
+\node[fill=canvas, inner sep=1pt] at (c1) {\icok};
 
-% ----------------------------------------------------------------- note --
-\node[note, anchor=north west, text width=22cm] at (0.0,-3.05)
-  {Paths 1 and 2 need no exploit, only a configuration that is already
-   there: an agent that looks around finds them. Path 3 needs no exploit
-   either, but pays only once someone on the host runs what it left. Path
-   4 needs an unpatched runtime. Path 5 is not an escape from the sandbox
-   but into the measurement: the agent's code is trusted twice more after
-   the solve ends.};
+
 
 \end{tikzpicture}
 \end{document}

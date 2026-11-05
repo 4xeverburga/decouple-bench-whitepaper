@@ -6,7 +6,7 @@ LATEXOPTS ?= -interaction=nonstopmode -halt-on-error -file-line-error
 
 SRC     := src/graphics
 BUILD   := build
-FIGURES := 01-two-phases 02-agent-boundary 03-workspace-provenance 04-case-isolation 05-escape-paths 06-context-leaks
+FIGURES := 01-two-phases 02-case-isolation
 
 .PHONY: all figures atlas png clean
 

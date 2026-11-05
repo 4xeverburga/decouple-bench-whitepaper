@@ -8,7 +8,7 @@
 % arrow or border is a bug: the point of a style file is that figure 4
 % looks like it was drawn by whoever drew figure 1.
 %
-% Built with LuaLaTeX: the type is Quicksand (titles), Hanken Grotesk
+% Built with XeLaTeX: the type is Quicksand (titles), Hanken Grotesk
 % (body) and JetBrains Mono (paths, commands), shipped in `fonts/` under
 % the SIL OFL, and the icons are Font Awesome 5 Free.
 %
@@ -70,6 +70,9 @@
 % --- icons ---------------------------------------------------------------
 % One macro per thing, so a figure never picks its own glyph for docker.
 \newcommand{\icdocker}{{\color{cool}\faDocker}}
+% A compose project is a group of sibling containers, not a container:
+% its card never carries the whale, or the figure reads as docker-in-docker.
+\newcommand{\iccompose}{\faLayerGroup}
 \newcommand{\icagent}{\faRobot}
 \newcommand{\ichost}{\faServer}
 \newcommand{\icdb}{\faDatabase}
@@ -113,6 +116,18 @@
   sandbox/.style={draw=cool, fill=cool!4, rounded corners=6pt,
     dash pattern=on 4pt off 2.5pt, inner sep=7pt, line width=1pt},
   outside/.style={panel},
+  % the machine itself. Every container is drawn inside one of these: a
+  % container is a process on the host, not a place next to it.
+  hostframe/.style={draw=ink, fill=surface!55, rounded corners=10pt,
+    line width=1.3pt},
+  hosttab/.style={fill=ink, text=canvas, rounded corners=3pt,
+    font=\display\bfseries\small, inner xsep=6pt, inner ysep=3pt},
+  % a card is one compose project; a stack of them is several at once.
+  sandcard/.style={draw=cool, fill=cool!4, rounded corners=6pt,
+    dash pattern=on 4pt off 2.5pt, line width=1pt},
+  stackcard/.style={draw=strong, fill=canvas, rounded corners=6pt,
+    line width=0.8pt},
+  cardlabel/.style={font=\ttfamily\scriptsize, text=muted, inner sep=1pt},
   % leaves
   box/.style={draw=strong, fill=canvas, rounded corners=3pt, align=left,
     inner sep=4.5pt, line width=0.7pt},
@@ -158,6 +173,20 @@
   link/.style={draw=inksec, dashed, line width=0.6pt},
   cross/.style={draw=heatred, line width=1.2pt},
 }
+
+% Several compose projects at once, drawn as a deck of cards:
+% `\cardstack{style}{x0,y0}{x1,y1}{run c/2, run b/1}` draws the back cards
+% (furthest first, each named on the strip that shows) and then the front
+% one, whose contents the figure draws on top.
+\newcommand{\cardstep}{0.38}
+\newcommand{\cardstack}[4]{%
+  \foreach \lab/\k in {#4} {
+    \draw[#1] ($(#2)+(\k*\cardstep,\k*\cardstep)$) rectangle
+      ($(#3)+(\k*\cardstep,\k*\cardstep)$);
+    \node[cardlabel, anchor=north east] at
+      ($(#3)+(\k*\cardstep-0.2,\k*\cardstep-0.04)$) {\lab};
+  }
+  \draw[#1] (#2) rectangle (#3);}
 
 % A crossed-out node: `\barred{name}`.
 \newcommand{\barred}[1]{%

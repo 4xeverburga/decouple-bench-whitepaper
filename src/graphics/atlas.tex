@@ -1,5 +1,5 @@
 % The figure atlas: every figure, in order, with the claim it makes, the
-% threat model the last two draw, where the harness sits in the
+% threat model against them, where the harness sits in the
 % literature, and the references.
 %
 % This is not the whitepaper. It exists so a change to `style.tex` can be
@@ -82,49 +82,37 @@
 
 \vspace{10pt}
 \begin{minipage}{0.62\linewidth}
-These six figures answer one question: what does one run actually touch,
+These two figures answer one question: what does one run actually touch,
 and what is kept apart from what. They describe the harness as it is, not
 as it was meant to be — each figure's source file names the code it was
 drawn from.
 
-Figures 1–4 are the design: two phases, a sandbox whose only host path
-is the tree, a workspace with no history, and one stack per case.
-Figures 5 and 6 are the threat model against that design: the ways an
-agent could leave the sandbox, and what it can read without leaving it.
+Figures 1 and 2 are the design: two phases on one host, and one
+stack per case. Every container is drawn inside the host that runs it,
+and several solves or several cases are drawn as a deck of cards: they
+run side by side. A card is a compose project — a group of sibling
+containers on the host's one engine, never a container that runs
+others. The pages after the figures are the threat model against that
+design: the ways an agent could leave the sandbox, and what it can read
+without leaving it; then the native agent, Inspect's \texttt{react()}.
 They are drawn from the configuration, not from an observed run; no run
 has been shown to use any of them. The last pages place the harness
 among the sandboxes and benchmarks it borrows from, with references.
 \end{minipage}
 
 \figurepage{1. Two phases}
-  {A run is two evals: a solve inside Inspect's docker compose sandbox,
-   and a score on the host. The only thing that crosses is the tree —
-   but it crosses twice, and both crossings are trusted.}
+  {A run is two evals on one host: a solve inside its sandbox, a
+   compose project Inspect starts, and a score that starts one stack per case. Solves of
+   different runs, and cases of one score, run side by side. The only
+   thing that crosses is the tree, as host files.}
   {\figimg{01-two-phases}}
 
-\figurepage{2. The agent's boundary}
-  {The sandbox's filesystem has the tree and a database sidecar, and no
-   path to the bench, the goldens or the docker socket. Its network has
-   all of them: the bench repository is public, and egress is open.}
-  {\figimg{02-agent-boundary}}
-
-\figurepage{3. Workspace provenance}
-  {The workspace is an extracted archive committed once, not a clone: no
-   history, no refs, no reflog. What comes back is that tree plus one
-   diff, read by host-side git from a \texttt{.git/} the agent could
-   write.}
-  {\figimg{03-workspace-provenance}}
-
-\figurepage{4. One case, one stack}
-  {One case, one compose project, empty named volumes, and \texttt{down
-   -v} before the next. The stack builds and runs the agent's code.}
-  {\figimg{04-case-isolation}}
-
-\figurepage{5. Five ways out}
-  {A threat model, ordered by cost to the agent. Paths 1 and 2 need no
-   exploit; path 4 needs an unpatched runtime; path 5 attacks the
-   measurement rather than the host.}
-  {\figimg{05-escape-paths}}
+\figurepage{2. One case, one stack}
+  {One case, one compose project on its own free port, empty named
+   volumes, and \texttt{down -v} after. Cases run side by side, up to a
+   host-wide cap. The
+   stack builds and runs the agent's code.}
+  {\figimg{02-case-isolation}}
 
 % ------------------------------------------------------------------------
 \clearpage
@@ -139,11 +127,11 @@ own: o1-preview, in a CTF, found an exposed Docker API and used it to read
 the flag~\cite{o1card}, and SandboxEscapeBench measured models reliably
 exploiting writable host mounts and exposed sockets~\cite{sandboxescape}.}
 
-\subsection*{\hot{1}\ Host git on a \texttt{.git/} the agent wrote}
-The bind mount includes \texttt{.git/}. When the solve ends, the cleanup
-hook runs \texttt{git add -N .} and \texttt{git diff -{}-binary} on the
-host, as the supervisor, against that directory
-(\texttt{solves.capture}). Git reads \texttt{.git/config} first, and
+\subsection*{1\ Host git on a \texttt{.git/} the agent wrote — closed}
+\emph{Closed in \texttt{2ba4f94}; kept here because the rule it taught
+still binds.} The bind mount includes \texttt{.git/}. The cleanup hook
+used to run \texttt{git add -N .} and \texttt{git diff -{}-binary} on
+the host, as the supervisor, against that directory. Git reads \texttt{.git/config} first, and
 several of its keys are commands: \texttt{core.fsmonitor} is executed by
 \texttt{add} and \texttt{diff}~\cite{gitconfig}. An agent that writes one
 line there gets code execution on the host at cleanup. The supervisor is
@@ -152,10 +140,12 @@ in group \texttt{docker}, so that is root-equivalent: every sample's
 problem SWE-bench met from the other side — agents reading the
 repository's own git state~\cite{swebench465} — except here the
 repository is read by the harness, not the agent.
-\emph{Close it} by never running git on an agent-written tree: keep the
-baseline's \texttt{GIT\_DIR} on the host, outside the mount, and diff a
-copy that has no \texttt{.git/}; at minimum pass \texttt{-c
-core.fsmonitor= -c core.hooksPath=/dev/null}.
+\emph{Now} \texttt{solves.capture} copies the tree, without
+\texttt{.git/}, into a \texttt{baseline/} that was never mounted, and
+diffs there with \texttt{core.fsmonitor=false},
+\texttt{core.hooksPath=/dev/null} and no global or system config. The
+rule: no host \texttt{git} call may take the mounted tree as its
+\texttt{-C}.
 
 \subsection*{\hot{2}\ The public bench repository}
 \texttt{solve.yaml} declares no network, so the workspace sits on
@@ -209,12 +199,6 @@ collector a network only the Java agent reaches, and passing span text to
 the judge as quoted data.
 \end{multicols}
 
-\figurepage{6. What a curious agent can read}
-  {Without leaving: the left column tells the agent it is measured, the
-   middle column hands it the answer, the right column is what was
-   checked and holds.}
-  {\figimg{06-context-leaks}}
-
 % ------------------------------------------------------------------------
 \clearpage
 \section*{What can leak into the workspace's context}
@@ -253,7 +237,7 @@ and need not be: an agent CLI is what any developer's machine runs.
 These invalidate a score. A run that read one is a leak, not a
 measurement (\texttt{AGENTS.md}, \emph{before a score is quoted}).
 \begin{itemize}
-\item The public repository (figure 5, path 2): manifests, prompts,
+\item The public repository (path 2 above): manifests, prompts,
   goldens, and through \texttt{seeds/prompts/} every other work order.
 \item The app's upstream, forks and issue trackers. Nobody has published
   this decoupling today; nothing stops the lookup if somebody does — the
@@ -278,6 +262,78 @@ The checks that apply to every run are the ones \texttt{AGENTS.md}
 already asks for: read the trace for any path that left the checkout,
 and treat a run that touched the corpus as no score. With egress closed,
 that check becomes a confirmation rather than the only defence.
+\end{multicols}
+
+
+% ------------------------------------------------------------------------
+\clearpage
+\section*{How the native agent behaves}
+\begin{multicols}{2}
+\claim{Three of the solve profiles (\texttt{react-*}) run no agent CLI.
+The agent is Inspect's own \texttt{react()}~\cite{inspect}, built in
+\texttt{src/agents/react.py} with two tools, \texttt{bash()} and
+\texttt{text\_editor()}, plus the \texttt{submit()} tool react always
+adds. What follows is Inspect 0.3.286, the version the bench pins.}
+
+\subsection*{Where it runs}
+The loop is the eval process on the host. It calls the provider itself,
+so there is no model bridge and no key in the sandbox; each tool call
+becomes a \texttt{docker exec} in the workspace container, as root, in
+\texttt{/workspace}. A \texttt{ps} inside the sandbox shows no agent at
+all, which is one tell fewer than a CLI profile has.
+
+\subsection*{One turn}
+\begin{enumerate}[leftmargin=1.4em]
+\item \emph{Only with compaction:} estimate the input — the provider's
+  token count for the last call plus a count of what was appended since —
+  and compact if it exceeds the threshold.
+\item One \texttt{generate} on the whole history.
+\item If the provider stopped on \texttt{model\_length}, the window
+  overflowed. With compaction, react forces one compaction and retries.
+  Without it, and with \texttt{truncation="disabled"} (react's default),
+  the loop breaks: the solve ends with the tree as it stands, and the
+  score grades that tree.
+\item Tool calls run and their results are appended. A call to
+  \texttt{submit()} ends the solve (one attempt: \texttt{attempts=1}).
+\item A turn with no tool call appends the continue prompt — \emph{“Please
+  proceed to the next step using your best judgement. If you believe you
+  have completed the task, please call the \texttt{submit()} tool”} — and
+  loops. Nothing else stops it but \texttt{submit()}, the manifest's
+  120-minute \texttt{time\_limit}, or three content-filter refusals in a
+  row; the bench sets no message or token limit on a real answerer.
+\end{enumerate}
+
+\subsection*{Compaction, and its 90\,\%}
+\texttt{compaction: none} passes \texttt{None}: react keeps the whole
+history and never compacts. \texttt{compaction: CompactionAuto}
+(profile \texttt{react-glm53-flash-auto}) passes
+\texttt{CompactionAuto()} with its defaults:
+\begin{itemize}
+\item \textbf{threshold \texttt{0.9}}: a float $\le 1$ is a fraction of
+  the context window, so compaction starts once the estimated input
+  passes \textbf{90\,\%} of it. An integer would be an absolute token
+  count.
+\item The window is what Inspect's model database says for the answer
+  model. For \texttt{glm-5.3-flash} and \texttt{deepseek-v4.1-flash} it
+  resolves to 1,048,576 tokens, so the threshold is 943,718. A model it
+  does not know falls back to 128,000 (threshold 115,200), with a
+  warning in the log.
+\item \emph{Native first, summary fallback.} Only the OpenAI (Responses
+  API) and Anthropic providers implement native compaction;
+  \texttt{openai-api/…} is the OpenAI-compatible provider, which does
+  not, so on the bench every compaction is a \textbf{summary}: the same
+  model writes a detailed summary of the conversation, and the input
+  becomes system message, work order, summary and what followed it. If
+  one pass does not get under the threshold, up to three more run; if
+  none does, the run errors.
+\item A memory warning at 0.9 × threshold (81\,\% of the window) exists,
+  but fires only when the agent has a memory tool; react here has none.
+\end{itemize}
+Two consequences for reading a score. A compacted run is a different
+agent from an uncompacted one, which is why it is a separate profile.
+And the threshold is only as good as the window Inspect believes: if the
+gateway's real window is smaller, step 1 never fires and only step 3's
+forced compaction keeps the run alive.
 \end{multicols}
 
 % ------------------------------------------------------------------------
@@ -339,7 +395,7 @@ of code sandboxes finds pinning and patching matter more than the engine
 chosen~\cite{codesandboxes}. AISI's own sandboxing toolkit scopes itself
 to accidental damage and leaves adversarial models as future
 work~\cite{aisisandbox} — which is the honest position for this bench
-too, until paths 1 and 2 are closed.
+too, until path 2 is closed.
 
 \subsection*{Isolation primitives}
 A docker container shares the host kernel~\cite{cve5736, cve21626}.

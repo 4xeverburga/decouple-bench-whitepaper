@@ -1,0 +1,67 @@
+% Figure 2 — one case, one stack, several at once, each from empty.
+%
+% The goldens were captured on a pristine database, so a case scored on a
+% database another case touched is not the same measurement. Scoring gives
+% every case its own compose project, on a free host port it picks itself,
+% and removes it afterwards, named volumes included. Because nothing is
+% shared but the image, cases run side by side: SCORE_MAX_SAMPLES per
+% score, STACK_MAX_LIVE flock slots across every process on the host, and
+% one build at a time.
+%
+% Sources: AGENTS.md rule 4 and "Running side by side";
+% src/samples/mamute/env/compose.yaml (networks api/data, volumes
+% db-data/traces); src/bench/stack.py (project name, _free_port,
+% PortTakenError retry, slots and build.lock under out/locks/, down -v);
+% .env.example (SCORE_MAX_SAMPLES=4, STACK_MAX_LIVE=4,
+% STACK_PORT_ATTEMPTS=5).
+\documentclass[tikz,border=4pt]{standalone}
+\input{style}
+
+\begin{document}
+\begin{tikzpicture}
+
+% ------------------------------------------------------------------ host --
+\draw[hostframe] (0,2.4) rectangle (26.4,13.6);
+
+% -------------------------------------------------------------- manifest --
+\node[file, text width=7.4cm, align=center] (man) at (11.5,12.4)
+  {\icfile\ \textbf{one manifest} · \texttt{main.py score}\\
+   4 cases replayed at once};
+
+% ---------------------------------------------------- one card per case --
+\foreach \i/\x/\proj/\case/\port in {
+    1/0.8/1a2b3c4d/answer-appears/41873,
+    2/8.3/9f3c0a71/upvote-increments-count/39211,
+    3/15.8/5e77b2c0/watch-adds-watcher/44502} {
+  \begin{scope}[xshift=\x cm]
+    \draw[stackcard] (0,4.6) rectangle (6.9,10.6);
+    \node[title, anchor=north west] at (0.25,10.45)
+      {\iccompose\ case \i};
+    \node[meta, anchor=north west] at (0.3,9.85) {\case};
+    \node[meta, anchor=north west] at (0.3,9.45)
+      {compose -p bench-mamute-\proj};
+    \node[db] (db\i) at (1.1,8.0) {\icdb\\ \texttt{db}};
+    \node[device, minimum width=1.5cm] (fr\i) at (3.45,8.0)
+      {\icdocker\\ \texttt{front}};
+    \node[device] (co\i) at (5.75,8.0) {\ictrace\\ \texttt{collector}};
+    \draw[link] (db\i) -- node[meta, above, fill=canvas] {data} (fr\i);
+    \draw[link] (fr\i) -- node[meta, above, fill=canvas] {api} (co\i);
+    \node[tag] at (3.45,6.0)
+      {\icnet\ \texttt{:\port}\,$\to$\,\texttt{8080} · its own free port};
+    \node[tag] at (3.45,5.3)
+      {\icvolume\ \texttt{db-data} \texttt{traces} — empty};
+    \node[device, minimum width=3.2cm] (pw\i) at (3.45,3.35)
+      {\icbrowser\ Playwright};
+    \draw[flow] (pw\i.north) -- node[lbl, right, fill=surface!55]
+      {\texttt{http://…:\port}} (3.45,4.6);
+    \draw[live] (man.south) -- ++(0,-0.5) -| (3.45,10.6);
+  \end{scope}
+}
+
+% ------------------------------------------------------ the one that waits --
+\draw[stackcard, dashed, draw=muted] (23.3,4.6) rectangle (25.9,10.6);
+\node[note, text width=2.3cm, align=center] at (24.6,7.6)
+  {\iccompose\\[2pt]case 4\\\emph{waits its turn}};
+
+\end{tikzpicture}
+\end{document}

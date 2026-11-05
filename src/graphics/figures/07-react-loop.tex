@@ -1,0 +1,139 @@
+% Figure 7 — the native agent: Inspect's react(), and when it compacts.
+%
+% Unlike a CLI profile, react does not run inside the sandbox: the loop is
+% the Inspect eval process on the host, it calls the provider itself (no
+% bridge), and only its two tools execute in the workspace container.
+% Each turn: an optional compaction check, one generate, an overflow
+% check, then tool calls — or, with none, the continue prompt.
+%
+% Compaction is off unless the profile says `CompactionAuto`. Its default
+% threshold is 0.9 of the context window Inspect resolves for the model;
+% `openai-api` (OpenAICompatibleAPI) has no native compaction, so on the
+% bench's profiles it always falls back to a summary by the same model.
+%
+% Sources: src/agents/react.py (react(model, [bash(), text_editor()],
+% compaction=None | CompactionAuto())); tasks-config.yaml
+% (react-glm53-flash, react-glm53-flash-auto); inspect_ai 0.3.286:
+% agent/_react.py (loop, _handle_overflow, truncation="disabled"),
+% agent/_types.py (DEFAULT_CONTINUE_PROMPT), model/_compaction/auto.py
+% (threshold=0.9), _compaction.py (_resolve_threshold,
+% DEFAULT_CONTEXT_WINDOW=128_000, memory warning at 0.9 x threshold,
+% MAX_ITERATIONS=3), model/_providers/providers.py (openai-api ->
+% OpenAICompatibleAPI, no compact()); get_model_input_tokens() on
+% glm-5.3-flash and deepseek-v4.1-flash: 1,048,576.
+\documentclass[tikz,border=4pt]{standalone}
+\input{style}
+
+\begin{document}
+\begin{tikzpicture}
+
+% ------------------------------------------------------------------ host --
+\draw[hostframe] (0,1.0) rectangle (24.6,15.0);
+\node[hosttab, anchor=north east] at (24.25,14.65) {\ichost\ the host};
+
+% ----------------------------------------------------- the eval process --
+\draw[stackcard] (0.6,1.6) rectangle (15.2,13.6);
+\node[title, anchor=north west] at (0.9,13.45)
+  {\icterm\ Inspect eval process — \texttt{react()}};
+\node[meta, anchor=north west] at (0.95,12.85)
+  {src/agents/react.py · tools: bash(), text\_editor(), submit()};
+
+\tikzset{loopstep/.style={box, text width=5.0cm},
+         side/.style={note, text width=6.4cm}}
+
+\node[file, text width=5.0cm] (wo) at (3.9,11.55)
+  {\icfile\ the work order, as the first user message};
+\node[loopstep, draw=cool, line width=1pt] (s1) at (3.9,10.0)
+  {\textbf{1 · before each call}\\\emph{only with} \texttt{CompactionAuto}:
+   estimated tokens $>$ 0.9 × window?};
+\node[loopstep, draw=heatmid, line width=1.1pt] (s2) at (3.9,8.3)
+  {\textbf{2 · generate}\\one model call, the whole history};
+\node[loopstep] (s3) at (3.9,6.65)
+  {\textbf{3 · overflow?}\\\texttt{stop\_reason = model\_length}};
+\node[loopstep] (s4) at (3.9,5.0)
+  {\textbf{4 · tool calls?}\\run each, append the results};
+\node[loopstep] (s5) at (3.9,3.0)
+  {\textbf{5 · no tool call}\\append the continue prompt: \emph{“Please
+   proceed to the next step… call \texttt{submit()}”}};
+
+\draw[flow] (wo) -- (s1);
+\draw[flow] (s1) -- node[lbl, right] {no} (s2);
+\draw[flow] (s2) -- (s3);
+\draw[flow] (s3) -- node[lbl, right] {no} (s4);
+\draw[flow] (s4) -- node[lbl, right] {none} (s5);
+\draw[flow] (s5.west) -- ++(-0.45,0) |- (s1.west);
+\draw[flow] (s4.west) -- ++(-0.25,0) |- ([yshift=-1.5mm]s1.west);
+\node[lbl, rotate=90, fill=canvas] at (0.95,6.0) {next turn};
+
+% what happens on each side branch
+\node[held, text width=6.0cm, anchor=west] (c1) at (7.7,10.0)
+  {\textbf{compact}, then generate on the smaller input:\\
+   native first, else a \textbf{summary} written by the same model;
+   up to 3 more passes, or the run errors};
+\draw[flow, draw=success] (s1) -- node[lbl, above] {yes} (c1);
+\node[side, anchor=west] (c3) at (7.7,6.65)
+  {\textbf{with} compaction: one forced compaction, then retry.\\
+   \textbf{without}: the loop breaks — the solve ends with the tree as it
+   stands (\texttt{truncation} is \texttt{"disabled"})};
+\draw[flow] (s3) -- node[lbl, above] {yes} (c3);
+\node[breach, text width=4.4cm, anchor=west] (end) at (9.5,3.0)
+  {\icok\ \textbf{the solve ends} when\\\texttt{submit()} is called, the
+   120-minute \texttt{time\_limit} hits, or 3 refusals in a row};
+\draw[flow] (s4.east) -- ++(0.9,0) |- node[lbl, pos=0.25, right]
+  {\texttt{submit()}} (end.west);
+
+% --------------------------------------------------------------- sandbox --
+\cardstack{sandcard}{16.0,4.0}{23.8,10.4}{run c/2, run b/1}
+\node[cardlabel, anchor=north east] at (23.6,10.32) {run a};
+\node[title, anchor=north west] at (16.3,10.25) {\icdocker\ Inspect sandbox};
+\node[device, text width=4.4cm] (ws) at (19.9,7.9)
+  {\icdocker\ \textbf{workspace}\\\texttt{bash}, \texttt{text\_editor}
+   run here, as root, in \texttt{/workspace}};
+\node[db] at (19.9,5.4) {\icdb\\ \texttt{db}};
+\node[note, text width=6.8cm, anchor=north west, align=center]
+  at (16.4,9.5) {no agent process in here: only tool calls};
+\draw[live] ([yshift=1.2mm]s4.east) -- (14.6,5.0+0.12) |- (ws.west)
+  node[lbl, pos=0.75, above, fill=surface!55] {\texttt{docker exec}};
+
+% ----------------------------------------------------- outside the host --
+\node[outside, text width=4.6cm, align=center, anchor=south] (prov)
+  at (14.9,15.8)
+  {\icweb\ \textbf{model provider}\\\texttt{openai-api/opencode-go/…}};
+\draw[live, {Latex[length=1.8mm,width=1.4mm]}-{Latex[length=1.8mm,width=1.4mm]}]
+  (s2.east) -| (prov.south);
+\node[lbl, fill=surface!55, anchor=east] at (14.75,14.4)
+  {direct, from the host: no bridge, no key in the sandbox};
+
+% ------------------------------------------------------------ the gauge --
+\begin{scope}[yshift=-0.4cm]
+  \node[sub, anchor=west] at (0,0.55)
+    {context window, as Inspect resolves it for the answer model};
+  \fill[surface] (0,-0.6) rectangle (20,0);
+  \fill[cool!18] (0,-0.6) rectangle (16.2,0);
+  \fill[warning!25] (16.2,-0.6) rectangle (18,0);
+  \fill[heatred!18] (18,-0.6) rectangle (20,0);
+  \draw[strong, line width=0.7pt] (0,-0.6) rectangle (20,0);
+  \foreach \p/\t in {0/0\,\%, 5/25\,\%, 10/50\,\%, 15/75\,\%, 20/100\,\%} {
+    \draw[muted] (\p,-0.6) -- (\p,-0.75);
+    \node[meta, anchor=north] at (\p,-0.75) {\t};
+  }
+  \draw[warning, line width=1pt, dashed] (16.2,0.15) -- (16.2,-0.6);
+  \node[meta, anchor=south, text=warning] at (16.2,0.15) {81\,\%};
+  \draw[heatred, line width=1.6pt] (18,0.3) -- (18,-0.6);
+  \node[font=\semibold\footnotesize, text=heatink, anchor=south]
+    at (18,0.3) {90\,\% · compaction};
+  \node[note, anchor=north west, text width=8.0cm] at (0,-1.25)
+    {\textbf{90\,\%} is \texttt{CompactionAuto}'s default
+     \texttt{threshold=0.9}. \textbf{81\,\%} (0.9 × threshold) is the
+     memory warning, and only fires if the agent has a memory tool —
+     the bench's react has none.};
+  \node[note, anchor=north west, text width=11.6cm] at (8.6,-1.25)
+    {\texttt{glm-5.3-flash}, \texttt{deepseek-v4.1-flash}: Inspect reads
+     \textbf{1,048,576} tokens $\to$ compaction at \textbf{943,718}. A
+     model it does not know falls back to 128,000 $\to$ 115,200. If the
+     gateway's real window is smaller than what Inspect believes, step 1
+     never fires and only step 3's forced compaction saves the run.};
+\end{scope}
+
+\end{tikzpicture}
+\end{document}
