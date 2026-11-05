@@ -20,9 +20,9 @@
 \begin{tikzpicture}
 
 % ------------------------------------------------------------------ host --
-\draw[hostframe] (0,0) rectangle (25.6,13.9);
-\node[hosttab, anchor=north east] at (25.25,13.55)
-  {\ichost\ the host};
+\draw[hostframe] (0,0) rectangle (22.8,13.9);
+\node[hosttab, anchor=north east] at (22.45,13.55)
+  {\ichost\ host};
 
 % ---------------------------------------------------------------- solves --
 \cardstack{sandcard}{0.8,6.3}{10.6,12.5}{run c/2, run b/1}
@@ -33,16 +33,15 @@
 % the CLI is copied into the workspace container and runs there: it is a
 % process in it, not a container of its own
 \draw[box] (1.2,7.75) rectangle (6.4,11.55);
-\coordinate (ws) at (6.4,8.2);
+\coordinate (ws) at (6.4,9.8);
 \node[sub, anchor=north west, align=left] at (1.35,11.45)
   {\icdocker\ \textbf{workspace}};
 \node[meta, anchor=north west] at (1.4,10.95)
   {JDK 8 · Maven · Node · \textasciitilde/.m2 · uid 0};
 \node[device, fill=surface, text width=3.8cm] (agent) at (3.8,9.4)
   {\icagent\ \textbf{agent CLI}, a process\\opencode, claude, …};
-\node[meta, anchor=north] at (3.8,8.55) {copied in at run time};
-\node[db] (db) at (8.4,8.2) {\icdb\\ \texttt{db}};
-\node[meta, below=1mm of db, align=center] {mysql:5.7, empty};
+\node[db] (db) at (8.4,9.8) {\icdb\\ \texttt{db}};
+\node[meta, above=1mm of db, align=center] {mysql:5.7, empty};
 \node[tag] (bind) at (3.6,6.75)
   {\icfolder\ bind mount (rw) \texttt{/workspace}};
 \draw[link] (ws) -- (db);
@@ -59,11 +58,13 @@
 \draw[flow] (wsdir) -- node[lbl, right] {the tree, and its diff} (kept);
 
 % ---------------------------------------------------- inspect, the bridge --
-\node[device, text width=2.8cm] (bridge) at (12.95,9.4)
+\node[device, text width=2.8cm] (bridge) at (8.9,3.9)
   {\icterm\ \textbf{Inspect}\\the eval process\\and its model bridge};
-\draw[back] (agent.east) -- node[lbl, above] {model calls} (bridge.west);
+\draw[back] (agent.south east) -- node[lbl, pos=0.84, sloped, above] {model calls}
+  (bridge.north);
 
 % ---------------------------------------------------------------- scores --
+\begin{scope}[xshift=-2.8cm]
 % the deck is approached from below: its back cards sit up and to the
 % right, so an arrow from above would cross them
 \cardstack{stackcard}{15.0,5.6}{24.1,11.6}{case 3/2, case 2/1}
@@ -88,8 +89,10 @@
 \draw[flow] (pw.north -| front.south) -- node[lbl, right, pos=0.12] {HTTP}
   (front.south);
 
+\end{scope}
+
 % ---------------------------------------------------------- the handoff --
-\draw[live] (kept.south) -- (2.9,0.45) -| (14.2,8.2) -- (15.0,8.2);
+\draw[live] (kept.south) -- (2.9,0.45) -| (11.8,8.2) -- (12.2,8.2);
 \node[lbl, anchor=south west, align=left] at (6.2,0.5)
   {\texttt{BENCH\_CHECKOUT}\\\texttt{= tree/}, the build context};
 
